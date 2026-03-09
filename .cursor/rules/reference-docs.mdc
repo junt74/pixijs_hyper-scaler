@@ -1,0 +1,17 @@
+---
+description: 参照用にクローンしたライブラリ・エンジン・プラットフォーム資料の参照先
+alwaysApply: false
+globs: "**/*.c,**/*.h,**/*.ts,**/*.js,**/*.py,**/res/**/*.res,**/makefile*,**/Makefile*"
+---
+
+# 参照用資料（docs/reference/）
+
+ユーザーが**ライブラリ・SDK・ゲームエンジン・プラットフォーム**について質問している場合、次のパスを**参考資料**として優先して参照する。
+
+- **ライブラリ・SDK**: `docs/reference/libraries/<名前>/`  
+  サンプル・API・ドキュメントが含まれることが多い。
+- **ゲームエンジン**: `docs/reference/engine/<名前>/`
+- **プラットフォーム**（配信・ログイン等）: `docs/reference/platforms/<名前>/`
+- **ツール**: `docs/reference/tools/<名前>/`
+
+該当するサブフォルダが存在するときは、その中のコード・サンプル・ドキュメントを参照して回答する。存在しない場合は、公式ドキュメントの URL（`docs/reference/links.md` にまとまっている場合あり）や一般的な知識に基づいて回答する。
