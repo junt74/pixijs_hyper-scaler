@@ -1,6 +1,6 @@
 # pixijs-hyper-scaler
 
-PixiJS + cannon-es を用いたブラウザ動作の **真3D Super Scaler ゲームエンジン** プロトタイプ。
+SEGA Y-BOARD, SYSTEM 32の表現をPixiJS + cannon-es を用いて行う、ブラウザ動作の **Super Scaler ゲームエンジン** プロトタイプ。
 
 Galaxy Force スタイルの自動前進レールシューターを想定した設計・実装を行う。
 
