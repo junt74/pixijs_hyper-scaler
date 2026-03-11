@@ -1,0 +1,21 @@
+{
+  "name": "pixijs-hyper-scaler",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "howler": "^2.2.4",
+    "pixi.js": "^8.8.1"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.12",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.1"
+  }
+}
