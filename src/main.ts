@@ -40,7 +40,7 @@ function fitCanvas(): void {
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
-await Assets.load(['/images/enemy01.png', '/images/props01.png']);
+await Assets.load(['/assets/images/enemy01.png', '/assets/images/props01.png']);
 
 function makeEntities(
   texture: string,
@@ -58,7 +58,7 @@ function makeEntities(
 }
 
 const enemies = makeEntities(
-  '/images/enemy01.png',
+  '/assets/images/enemy01.png',
   (i) => ({ x: rand50(), y: rand50(), z: 1000 + i * Z_STEP }),
   5,
   SPEED * 0.8,
@@ -67,7 +67,7 @@ const enemies = makeEntities(
 const rand300 = () => (Math.random() - 0.5) * 600; // -300 ~ +300
 
 const props = makeEntities(
-  '/images/props01.png',
+  '/assets/images/props01.png',
   (i) => ({ x: rand300(), y: -50, z: 1000 + i * (Z_STEP / 10) }),
   50,
 );
