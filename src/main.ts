@@ -1,4 +1,4 @@
-import { Application, Assets, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Sprite, TilingSprite } from 'pixi.js';
 
 // ---- Screen ----------------------------------------------------------------
 const SCREEN_W = 960;
@@ -8,6 +8,12 @@ const SCREEN_H = 540;
 const FOV_H = 60;
 const FOCAL = (SCREEN_W / 2) / Math.tan((FOV_H * Math.PI) / 180 / 2);
 const SPRITE_REF_DIST = 300;
+const HORIZON_Y = SCREEN_H * 0.46;
+
+// ---- Ground (Space Harrier style pseudo raycaster) -------------------------
+const GROUND_SLICE_H = 3;
+const CAMERA_HEIGHT = 140;
+const GROUND_SCROLL_SPEED = 550;
 
 // ---- Entity definitions ----------------------------------------------------
 const Z_NEAR  = 30;
@@ -40,7 +46,48 @@ function fitCanvas(): void {
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
 
-await Assets.load(['/assets/images/enemy01.png', '/assets/images/props01.png']);
+await Assets.load([
+  '/assets/images/enemy01.png',
+  '/assets/images/props01.png',
+  '/assets/images/ground.png',
+]);
+
+const groundLayer = new Container();
+groundLayer.zIndex = -1_000_000;
+app.stage.addChild(groundLayer);
+
+type GroundSlice = {
+  stripe: TilingSprite;
+  screenY: number;
+  dist: number;
+  uvScale: number;
+  xTileScale: number;
+};
+
+const groundSlices: GroundSlice[] = [];
+const groundTexture = Assets.get('/assets/images/ground.png');
+const GROUND_REPEAT_X_AT_ZERO_DIST = 8;
+
+for (let y = HORIZON_Y; y < SCREEN_H; y += GROUND_SLICE_H) {
+  const stripe = new TilingSprite({
+    texture: groundTexture,
+    width: SCREEN_W,
+    height: Math.min(GROUND_SLICE_H + 1, SCREEN_H - y),
+  });
+  stripe.x = 0;
+  stripe.y = y;
+  stripe.alpha = 0.98;
+  groundLayer.addChild(stripe);
+
+  // y_screen = horizon + focal * cameraHeight / z を z へ逆算
+  const dy = Math.max(1, y - HORIZON_Y);
+  const dist = (FOCAL * CAMERA_HEIGHT) / dy;
+  const uvScale = Math.max(0.0000078125, Math.min(0.000732421875, 4096 / dist));
+  const xRepeatCount = Math.max(1, Math.min(GROUND_REPEAT_X_AT_ZERO_DIST, GROUND_REPEAT_X_AT_ZERO_DIST * (dist / (dist + 1200))));
+  const xTileScale = Math.max(0.01, SCREEN_W / (Math.max(1, groundTexture.width) * xRepeatCount));
+
+  groundSlices.push({ stripe, screenY: y, dist, uvScale, xTileScale });
+}
 
 function makeEntities(
   texture: string,
@@ -77,6 +124,16 @@ const entities: EntityData[] = [...enemies, ...props];
 // ---- Game loop -------------------------------------------------------------
 app.ticker.add((ticker) => {
   const dt = ticker.deltaMS / 1000;
+  const move = GROUND_SCROLL_SPEED * dt;
+
+  for (const s of groundSlices) {
+    // 遠いラインはゆっくり、近いラインは速く流れるようにして擬似3D感を出す
+    const speedFactor = Math.max(0.2, Math.min(4, 1200 / s.dist));
+    s.stripe.tileScale.set(s.xTileScale, s.uvScale);
+    s.stripe.tilePosition.x += move * speedFactor * s.xTileScale;
+    s.stripe.tilePosition.y = s.dist * 0.08 * s.uvScale;
+    s.stripe.alpha = 0.25 + ((s.screenY - HORIZON_Y) / (SCREEN_H - HORIZON_Y)) * 0.75;
+  }
 
   for (const e of entities) {
     e.z -= e.speed * dt;
