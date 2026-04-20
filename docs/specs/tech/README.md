@@ -2,6 +2,15 @@
 
 **「どう実装するか」** を記述する場所です。コードではなく文書で方針を残しておくと、AI への指示や実装の一貫性に役立ちます。
 
+## このプロジェクトの主要ドキュメント
+
+- `Technical_Challenges_True3D_Doc1.md`
+  真3D Super Scaler エンジンの中核課題と確定方針
+- `Framework_Selection_Doc2.md`
+  入力、オーディオ、アセットロード、シーン管理などの選定方針
+- `Stage_JSON_Schema_Doc3.md`
+  Blender などの DCC から出力する `stage.json` の初版スキーマ
+
 ## 記述する内容の例
 
 - プラットフォーム制約の対応方針  

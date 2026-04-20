@@ -1,0 +1,77 @@
+{
+  "formatVersion": 1,
+  "stageId": "sample_stage",
+  "name": "Sample Stage",
+  "source": {
+    "dcc": "Blender",
+    "scene": "sample_stage.blend"
+  },
+  "meta": {
+    "exportedAt": "2026-04-20T00:00:00Z"
+  },
+  "waypoints": [
+    {
+      "id": "wp_000_start",
+      "position": { "x": 0, "y": 0, "z": 0 }
+    },
+    {
+      "id": "wp_001_mid",
+      "position": { "x": 0, "y": 10, "z": 120 }
+    },
+    {
+      "id": "wp_002_end",
+      "position": { "x": 25, "y": 0, "z": 260 }
+    }
+  ],
+  "colliders": [
+    {
+      "id": "col_wall_left",
+      "name": "Wall_Left",
+      "type": "box",
+      "position": { "x": -40, "y": 0, "z": 150 },
+      "rotation": { "yaw": 0, "pitch": 0, "roll": 0 },
+      "halfExtents": { "x": 4, "y": 16, "z": 80 },
+      "layer": "terrain"
+    }
+  ],
+  "sprites": [
+    {
+      "id": "spr_enemya_enemy_01",
+      "name": "Enemy_01",
+      "type": "EnemyA",
+      "position": { "x": -12, "y": 8, "z": 180 },
+      "yaw": 180,
+      "params": {
+        "variant": "alpha"
+      }
+    },
+    {
+      "id": "spr_tree_tree_01",
+      "name": "Tree_01",
+      "type": "Tree",
+      "position": { "x": 32, "y": 0, "z": 140 },
+      "yaw": 0
+    }
+  ],
+  "triggers": [
+    {
+      "id": "trg_checkpoint_01",
+      "name": "Checkpoint_01",
+      "event": "Checkpoint",
+      "position": { "x": 0, "y": 0, "z": 100 },
+      "rotation": { "yaw": 0, "pitch": 0, "roll": 0 },
+      "halfExtents": { "x": 16, "y": 8, "z": 2 }
+    },
+    {
+      "id": "trg_speed_change_01",
+      "name": "SpeedChange_01",
+      "event": "SpeedChange",
+      "position": { "x": 0, "y": 0, "z": 200 },
+      "rotation": { "yaw": 0, "pitch": 0, "roll": 0 },
+      "halfExtents": { "x": 12, "y": 8, "z": 2 },
+      "params": {
+        "speed": 120
+      }
+    }
+  ]
+}
