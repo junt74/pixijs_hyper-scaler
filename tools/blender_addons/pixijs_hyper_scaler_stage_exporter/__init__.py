@@ -1,7 +1,7 @@
 bl_info = {
     "name": "PixiJS Hyper Scaler Stage Exporter",
     "author": "OpenAI Codex",
-    "version": (0, 6, 0),
+    "version": (0, 7, 1),
     "blender": (4, 0, 0),
     "location": "File > Export > PixiJS Hyper Scaler Stage (.json)",
     "description": "Export stage.json v1 for PixiJS Hyper Scaler",
@@ -540,6 +540,46 @@ def sample_polyline_point(points, distance):
     return points[-1].copy()
 
 
+def polyline_total_length(points):
+    total_length = 0.0
+    for index in range(len(points) - 1):
+        total_length += (points[index + 1] - points[index]).length
+    return total_length
+
+
+def sample_polyline_positions(points, spacing, start_offset, end_inset, is_cyclic, include_end_point):
+    if len(points) < 2:
+        return []
+
+    total_length = polyline_total_length(points)
+    if total_length <= 1e-6:
+        return []
+
+    end_distance = total_length - end_inset
+    if end_distance < start_offset:
+        return []
+
+    sampled_points = []
+    sample_distance = start_offset
+    while sample_distance <= end_distance + 1e-6:
+        if is_cyclic and sample_distance >= end_distance - 1e-6:
+            break
+
+        sample_point = sample_polyline_point(points, sample_distance)
+        if sample_point is None:
+            break
+        sampled_points.append(sample_point)
+        sample_distance += spacing
+
+    if include_end_point and not is_cyclic:
+        end_point = sample_polyline_point(points, end_distance)
+        if end_point is not None:
+            if not sampled_points or (sampled_points[-1] - end_point).length > 1e-6:
+                sampled_points.append(end_point)
+
+    return sampled_points
+
+
 def sample_curve_sprite_transforms(obj, depsgraph, errors):
     if not getattr(obj, "pixijs_hs_curve_sprite_enabled", False):
         return []
@@ -570,29 +610,16 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
 
         for component in components:
             points, is_cyclic = ordered_component_vertices(temp_mesh, adjacency, component)
-            if len(points) < 2:
-                continue
+            sampled_points = sample_polyline_positions(
+                points,
+                spacing,
+                start_offset,
+                end_inset,
+                is_cyclic,
+                False,
+            )
 
-            total_length = 0.0
-            for index in range(len(points) - 1):
-                total_length += (points[index + 1] - points[index]).length
-
-            if total_length <= 1e-6:
-                continue
-
-            end_distance = total_length - end_inset
-            if end_distance < start_offset:
-                continue
-
-            sample_distance = start_offset
-            while sample_distance <= end_distance + 1e-6:
-                if is_cyclic and sample_distance >= end_distance - 1e-6:
-                    break
-
-                sample_point = sample_polyline_point(points, sample_distance)
-                if sample_point is None:
-                    break
-
+            for sample_point in sampled_points:
                 world_point = evaluated_obj.matrix_world @ (sample_point + local_offset)
                 transforms.append((world_point, None))
                 if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
@@ -601,12 +628,69 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
                     )
                     return []
 
-                sample_distance += spacing
-
         return transforms
     finally:
         if temp_mesh is not None:
             evaluated_obj.to_mesh_clear()
+
+
+def sample_waypoint_curve_positions(obj, depsgraph, errors):
+    spacing = float(getattr(obj, "pixijs_hs_waypoint_curve_spacing", 1.0))
+    if spacing <= 0:
+        errors.append(f'Waypoint curve "{object_name_path(obj)}" has non-positive spacing')
+        return []
+
+    start_offset = max(0.0, float(getattr(obj, "pixijs_hs_waypoint_curve_start_offset", 0.0)))
+    end_inset = max(0.0, float(getattr(obj, "pixijs_hs_waypoint_curve_end_inset", 0.0)))
+
+    evaluated_obj = obj.evaluated_get(depsgraph)
+    temp_mesh = None
+
+    try:
+        temp_mesh = evaluated_obj.to_mesh()
+        if temp_mesh is None or len(temp_mesh.vertices) == 0:
+            return []
+
+        adjacency, components = connected_vertex_components(temp_mesh)
+        if len(components) != 1:
+            errors.append(
+                f'Waypoint curve "{object_name_path(obj)}" must contain exactly one connected spline'
+            )
+            return []
+
+        points, is_cyclic = ordered_component_vertices(temp_mesh, adjacency, components[0])
+        if is_cyclic:
+            errors.append(
+                f'Waypoint curve "{object_name_path(obj)}" must be open (cyclic curves are unsupported)'
+            )
+            return []
+
+        sampled_points = sample_polyline_positions(
+            points,
+            spacing,
+            start_offset,
+            end_inset,
+            is_cyclic,
+            True,
+        )
+
+        return [evaluated_obj.matrix_world @ sample_point for sample_point in sampled_points]
+    finally:
+        if temp_mesh is not None:
+            evaluated_obj.to_mesh_clear()
+
+
+def estimate_waypoint_curve_sample_count(obj):
+    context = bpy.context
+    if context is None:
+        return None
+
+    depsgraph = context.evaluated_depsgraph_get()
+    preview_errors = []
+    positions = sample_waypoint_curve_positions(obj, depsgraph, preview_errors)
+    if preview_errors:
+        return None
+    return len(positions)
 
 
 def export_waypoints(scene, errors):
@@ -616,19 +700,31 @@ def export_waypoints(scene, errors):
         return []
 
     objects = sorted(collection.objects, key=lambda obj: obj.name)
-    if len(objects) < 2:
-        errors.append('"Waypoints" must contain at least 2 objects')
-        return []
+    depsgraph = bpy.context.evaluated_depsgraph_get()
 
     result = []
-    for index, obj in enumerate(objects):
+    for obj in objects:
+        if obj.type == "CURVE":
+            positions = sample_waypoint_curve_positions(obj, depsgraph, errors)
+            for sample_index, location in enumerate(positions):
+                result.append(
+                    {
+                        "id": f"wp_{len(result):03d}_{sanitize_id(obj.name)}_{sample_index:03d}",
+                        "position": engine_vec3(location),
+                    }
+                )
+            continue
+
         location, _rotation = world_transform(obj)
         result.append(
             {
-                "id": f"wp_{index:03d}_{sanitize_id(obj.name)}",
+                "id": f"wp_{len(result):03d}_{sanitize_id(obj.name)}",
                 "position": engine_vec3(location),
             }
         )
+
+    if len(result) < 2:
+        errors.append('"Waypoints" must export at least 2 points')
     return result
 
 
@@ -802,7 +898,7 @@ def build_stage_data(context, include_sprite_diagnostics=False):
     source = {
         "dcc": "Blender",
         "scene": source_scene,
-        "exporterVersion": "0.6.0",
+        "exporterVersion": "0.7.1",
     }
     if include_sprite_diagnostics:
         source["spriteExportDiagnostics"] = sprite_diagnostics
@@ -978,6 +1074,35 @@ class VIEW3D_PT_pixijs_hyper_scaler_curve_sprite(Panel):
         column.label(text="Preview stays visible while unselected")
 
 
+class VIEW3D_PT_pixijs_hyper_scaler_waypoint_curve(Panel):
+    bl_label = "Waypoint Curve"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "HyperScaler"
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        if obj is None or obj.type != "CURVE":
+            return False
+        return is_object_in_collection(obj, get_collection(context.scene, "Waypoints"))
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.active_object
+
+        layout.label(text='Curve is baked into ordered waypoints', icon="CURVE_DATA")
+        column = layout.column()
+        column.prop(obj, "pixijs_hs_waypoint_curve_spacing", text="Sampling Step")
+        column.prop(obj, "pixijs_hs_waypoint_curve_start_offset", text="Start Offset")
+        column.prop(obj, "pixijs_hs_waypoint_curve_end_inset", text="End Inset")
+        column.label(text="Smaller step = denser waypoint samples")
+        sample_count = estimate_waypoint_curve_sample_count(obj)
+        if sample_count is not None:
+            column.label(text=f"Estimated exported waypoints: {sample_count}")
+        column.label(text="Exports an open curve as a waypoint rail")
+
+
 def menu_func_export(self, _context):
     self.layout.operator(
         EXPORT_SCENE_OT_pixijs_hyper_scaler_stage.bl_idname,
@@ -991,6 +1116,7 @@ CLASSES = (
     VIEW3D_PT_pixijs_hyper_scaler_trigger,
     VIEW3D_PT_pixijs_hyper_scaler_sprite_array,
     VIEW3D_PT_pixijs_hyper_scaler_curve_sprite,
+    VIEW3D_PT_pixijs_hyper_scaler_waypoint_curve,
 )
 
 
@@ -1115,6 +1241,27 @@ def register():
         default=0.0,
         update=tag_redraw_view3d,
     )
+    bpy.types.Object.pixijs_hs_waypoint_curve_spacing = FloatProperty(
+        name="Waypoint Curve Sampling Step",
+        description="Distance between baked waypoint samples along the curve; smaller values produce denser rails",
+        default=1.0,
+        min=0.001,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_waypoint_curve_start_offset = FloatProperty(
+        name="Waypoint Curve Start Offset",
+        description="Distance from the beginning of the curve before the first waypoint sample",
+        default=0.0,
+        min=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_waypoint_curve_end_inset = FloatProperty(
+        name="Waypoint Curve End Inset",
+        description="Distance from the end of the curve where waypoint sampling stops",
+        default=0.0,
+        min=0.0,
+        update=tag_redraw_view3d,
+    )
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
@@ -1150,6 +1297,9 @@ def unregister():
     del bpy.types.Object.pixijs_hs_curve_sprite_start_offset
     del bpy.types.Object.pixijs_hs_curve_sprite_spacing
     del bpy.types.Object.pixijs_hs_curve_sprite_enabled
+    del bpy.types.Object.pixijs_hs_waypoint_curve_end_inset
+    del bpy.types.Object.pixijs_hs_waypoint_curve_start_offset
+    del bpy.types.Object.pixijs_hs_waypoint_curve_spacing
     del bpy.types.Object.pixijs_hs_trigger_params_json
     del bpy.types.Object.pixijs_hs_trigger_once
     del bpy.types.Object.pixijs_hs_trigger_event
