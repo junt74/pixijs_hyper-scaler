@@ -29,16 +29,38 @@
 - `Sprites` を親 Collection にする
 - 子 Collection 名が `sprites[*].type` になる
 - 各子 Collection に Empty や Mesh などの配置オブジェクトを置く
+- `CURVE` object も置ける
 - 追加の custom property は `params` に入る
+- 通常 sprite object には `Sprite Array` を設定できる
 - Blender 5 の新しい Geometry Nodes ベース `Array` を含む modifier 評価結果から、JSON 上で複製展開される
 - 従来の `Array` modifier は手動展開にも対応している
 - 同一オブジェクト内の複数 `Array` modifier / 多重配列も扱える
+- `CURVE` は `Curve Sprite` 設定を有効にすると、等間隔に `sprites[]` へ展開される
 - 現在の従来 `Array` 手動展開の対応は `Fixed Count` のみ
 
 例:
 
 - `Sprites/EnemyA/*` -> `type: "EnemyA"`
 - `Sprites/Tree/*` -> `type: "Tree"`
+
+### 3.1 Sprite Array
+
+- `Sprites/<type>/` 配下の通常 object を選択
+- `3D View > Sidebar > HyperScaler > Sprite Array` を開く
+- `Enabled` をオンにする
+- `Grid Count X/Y/Z` と `Grid Step X/Y/Z` を設定する
+- 配置は常に XYZ 軸に揃った直交格子として扱われる
+- active object については 3D View にラインとマーカーでプレビューが表示される
+- export 時にはその配置が `sprites[]` へ展開される
+
+### 3.2 Curve Sprite
+
+- `Sprites/<type>/` 配下の `CURVE` object を選択
+- `3D View > Sidebar > HyperScaler > Curve Sprite` を開く
+- `Enabled` をオンにする
+- `Spacing` で配置間隔を決める
+- 必要なら `Start Offset` / `End Inset` / `Local Offset` を設定する
+- billboard 前提のため `yaw` は `0` で export される
 
 ### 4. Triggers
 
@@ -90,6 +112,9 @@ zip で入れる場合は、zip の直下に `__init__.py` がある構造にす
 
 - サイドバーの `HyperScaler` タブから export
 - `Sprite Diagnostics` をオンにすると、`source.spriteExportDiagnostics` を JSON に含める
+- `Trigger` パネルで trigger 用の `Event / Once / Params JSON` を編集できる
+- `Sprite Array` パネルで通常 sprite object の反復配置とプレビューを設定できる
+- `Curve Sprite` パネルで curve から sprite を並べる設定ができる
 
 ## 制限
 
@@ -98,6 +123,8 @@ zip で入れる場合は、zip の直下に `__init__.py` がある構造にす
 - 回転変換は v1 の簡易マッピングです
 - object custom property は string / number / boolean のみ出力します
 - 従来 `Array` modifier の手動展開は `Fixed Count` のみ対応です
+- `Sprite Array` の 3D View プレビューは active object のみ表示します
+- `Curve Sprite` は評価後メッシュの折れ線を元にサンプリングするため、複雑な curve 設定では意図と差が出る場合があります
 - `Array` の複製数は安全のため 4096 件までに制限しています
 - `source.spriteExportDiagnostics` はデバッグ用途で、必要な時だけ有効化する想定です
 

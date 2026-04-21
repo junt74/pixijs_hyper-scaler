@@ -1,7 +1,7 @@
 bl_info = {
     "name": "PixiJS Hyper Scaler Stage Exporter",
     "author": "OpenAI Codex",
-    "version": (0, 5, 0),
+    "version": (0, 6, 0),
     "blender": (4, 0, 0),
     "location": "File > Export > PixiJS Hyper Scaler Stage (.json)",
     "description": "Export stage.json v1 for PixiJS Hyper Scaler",
@@ -14,16 +14,19 @@ import os
 from datetime import datetime, timezone
 
 import bpy
+import gpu
 from mathutils import Matrix, Vector
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import BoolProperty, FloatProperty, StringProperty
 from bpy.types import Operator, Panel
 from bpy_extras.io_utils import ExportHelper
+from gpu_extras.batch import batch_for_shader
 
 
 FORMAT_VERSION = 1
 RESERVED_TRIGGER_KEYS = {"event", "once", "name"}
 RESERVED_SPRITE_KEYS = {"variant", "route", "name"}
 MAX_ARRAY_EXPORT_COPIES = 4096
+SPRITE_ARRAY_PREVIEW_HANDLER = None
 
 
 def sanitize_id(value: str) -> str:
@@ -175,6 +178,25 @@ def is_object_in_collection(obj, collection):
     if collection is None:
         return False
     return any(linked_collection == collection for linked_collection in obj.users_collection)
+
+
+def is_object_in_child_collection(obj, root_collection):
+    if root_collection is None:
+        return False
+    child_names = {collection.name for collection in root_collection.children}
+    return any(linked_collection.name in child_names for linked_collection in obj.users_collection)
+
+
+def tag_redraw_view3d(_self=None, _context=None):
+    if bpy.context.window_manager is None:
+        return
+    for window in bpy.context.window_manager.windows:
+        screen = window.screen
+        if screen is None:
+            continue
+        for area in screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
 
 
 def world_transform(obj):
@@ -351,6 +373,242 @@ def evaluated_array_sprite_transforms(obj, depsgraph, errors):
             evaluated_obj.to_mesh_clear()
 
 
+def custom_sprite_array_transforms(obj):
+    count_x = max(1, int(getattr(obj, "pixijs_hs_sprite_array_count_x", 1)))
+    count_y = max(1, int(getattr(obj, "pixijs_hs_sprite_array_count_y", 1)))
+    count_z = max(1, int(getattr(obj, "pixijs_hs_sprite_array_count_z", 1)))
+    local_step = Vector((
+        float(getattr(obj, "pixijs_hs_sprite_array_step_x", 0.0)),
+        float(getattr(obj, "pixijs_hs_sprite_array_step_y", 0.0)),
+        float(getattr(obj, "pixijs_hs_sprite_array_step_z", 0.0)),
+    ))
+    world_rotation = obj.matrix_world.decompose()[1].to_euler("XYZ")
+
+    transforms = []
+    for index_x in range(count_x):
+        for index_y in range(count_y):
+            for index_z in range(count_z):
+                local_offset = Vector((
+                    local_step.x * index_x,
+                    local_step.y * index_y,
+                    local_step.z * index_z,
+                ))
+                world_location = obj.matrix_world @ local_offset
+                transforms.append((world_location, world_rotation))
+                if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
+                    return transforms[:MAX_ARRAY_EXPORT_COPIES]
+
+    return transforms
+
+
+def extend_crosshair_coords(coords, position, marker_size):
+    coords.extend([
+        position + Vector((-marker_size, 0.0, 0.0)),
+        position + Vector((marker_size, 0.0, 0.0)),
+        position + Vector((0.0, -marker_size, 0.0)),
+        position + Vector((0.0, marker_size, 0.0)),
+        position + Vector((0.0, 0.0, -marker_size)),
+        position + Vector((0.0, 0.0, marker_size)),
+    ])
+
+
+def draw_sprite_array_preview():
+    context = bpy.context
+    if context is None:
+        return
+
+    sprites_root = get_collection(context.scene, "Sprites")
+    if sprites_root is None:
+        return
+
+    marker_size = 0.15
+    shader = gpu.shader.from_builtin("UNIFORM_COLOR")
+    active_coords = []
+    inactive_coords = []
+    active_object = context.active_object
+    depsgraph = context.evaluated_depsgraph_get()
+    preview_errors = []
+
+    for child_collection in sprites_root.children:
+        for obj in child_collection.objects:
+            placements = []
+            if obj.type == "CURVE":
+                if getattr(obj, "pixijs_hs_curve_sprite_enabled", False):
+                    placements = sample_curve_sprite_transforms(obj, depsgraph, preview_errors)
+            elif getattr(obj, "pixijs_hs_sprite_array_enabled", False):
+                placements = custom_sprite_array_transforms(obj)
+
+            if not placements:
+                continue
+
+            target_coords = active_coords if obj == active_object else inactive_coords
+            for position, _rotation in placements:
+                extend_crosshair_coords(target_coords, position, marker_size)
+
+    gpu.state.blend_set("ALPHA")
+    gpu.state.line_width_set(2.0)
+    if inactive_coords:
+        inactive_batch = batch_for_shader(shader, "LINES", {"pos": inactive_coords})
+        shader.bind()
+        shader.uniform_float("color", (0.45, 0.65, 0.75, 0.45))
+        inactive_batch.draw(shader)
+    if active_coords:
+        active_batch = batch_for_shader(shader, "LINES", {"pos": active_coords})
+        shader.bind()
+        shader.uniform_float("color", (0.35, 0.95, 1.0, 0.9))
+        active_batch.draw(shader)
+    gpu.state.line_width_set(1.0)
+    gpu.state.blend_set("NONE")
+
+
+def connected_vertex_components(mesh):
+    adjacency = {vertex.index: set() for vertex in mesh.vertices}
+    for edge in mesh.edges:
+        adjacency[edge.vertices[0]].add(edge.vertices[1])
+        adjacency[edge.vertices[1]].add(edge.vertices[0])
+
+    components = []
+    remaining = set(adjacency.keys())
+
+    while remaining:
+        seed = remaining.pop()
+        stack = [seed]
+        component = {seed}
+
+        while stack:
+            current = stack.pop()
+            for neighbor in adjacency[current]:
+                if neighbor in remaining:
+                    remaining.remove(neighbor)
+                    component.add(neighbor)
+                    stack.append(neighbor)
+
+        components.append(component)
+
+    return adjacency, components
+
+
+def ordered_component_vertices(mesh, adjacency, component):
+    component_adjacency = {
+        index: [neighbor for neighbor in adjacency[index] if neighbor in component]
+        for index in component
+    }
+    endpoints = [index for index, neighbors in component_adjacency.items() if len(neighbors) <= 1]
+    is_cyclic = len(endpoints) == 0
+    start = endpoints[0] if endpoints else min(component)
+
+    ordered_indices = [start]
+    visited = {start}
+    previous = None
+    current = start
+
+    while True:
+        neighbors = [neighbor for neighbor in component_adjacency[current] if neighbor != previous]
+        next_index = next((neighbor for neighbor in neighbors if neighbor not in visited), None)
+
+        if next_index is None:
+            if is_cyclic and len(ordered_indices) == len(component):
+                ordered_indices.append(start)
+            break
+
+        ordered_indices.append(next_index)
+        visited.add(next_index)
+        previous = current
+        current = next_index
+
+    return [mesh.vertices[index].co.copy() for index in ordered_indices], is_cyclic
+
+
+def sample_polyline_point(points, distance):
+    if not points:
+        return None
+    if len(points) == 1:
+        return points[0].copy()
+
+    remaining = max(0.0, distance)
+    for index in range(len(points) - 1):
+        start = points[index]
+        end = points[index + 1]
+        segment = end - start
+        segment_length = segment.length
+        if segment_length <= 1e-6:
+            continue
+        if remaining <= segment_length:
+            return start + segment * (remaining / segment_length)
+        remaining -= segment_length
+
+    return points[-1].copy()
+
+
+def sample_curve_sprite_transforms(obj, depsgraph, errors):
+    if not getattr(obj, "pixijs_hs_curve_sprite_enabled", False):
+        return []
+
+    spacing = float(getattr(obj, "pixijs_hs_curve_sprite_spacing", 1.0))
+    if spacing <= 0:
+        errors.append(f'Curve sprite "{object_name_path(obj)}" has non-positive spacing')
+        return []
+
+    start_offset = max(0.0, float(getattr(obj, "pixijs_hs_curve_sprite_start_offset", 0.0)))
+    end_inset = max(0.0, float(getattr(obj, "pixijs_hs_curve_sprite_end_inset", 0.0)))
+    local_offset = Vector((
+        float(getattr(obj, "pixijs_hs_curve_sprite_offset_x", 0.0)),
+        float(getattr(obj, "pixijs_hs_curve_sprite_offset_y", 0.0)),
+        float(getattr(obj, "pixijs_hs_curve_sprite_offset_z", 0.0)),
+    ))
+
+    evaluated_obj = obj.evaluated_get(depsgraph)
+    temp_mesh = None
+
+    try:
+        temp_mesh = evaluated_obj.to_mesh()
+        if temp_mesh is None or len(temp_mesh.vertices) == 0:
+            return []
+
+        adjacency, components = connected_vertex_components(temp_mesh)
+        transforms = []
+
+        for component in components:
+            points, is_cyclic = ordered_component_vertices(temp_mesh, adjacency, component)
+            if len(points) < 2:
+                continue
+
+            total_length = 0.0
+            for index in range(len(points) - 1):
+                total_length += (points[index + 1] - points[index]).length
+
+            if total_length <= 1e-6:
+                continue
+
+            end_distance = total_length - end_inset
+            if end_distance < start_offset:
+                continue
+
+            sample_distance = start_offset
+            while sample_distance <= end_distance + 1e-6:
+                if is_cyclic and sample_distance >= end_distance - 1e-6:
+                    break
+
+                sample_point = sample_polyline_point(points, sample_distance)
+                if sample_point is None:
+                    break
+
+                world_point = evaluated_obj.matrix_world @ (sample_point + local_offset)
+                transforms.append((world_point, None))
+                if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
+                    errors.append(
+                        f'Curve sprite "{object_name_path(obj)}" expands beyond {MAX_ARRAY_EXPORT_COPIES} copies'
+                    )
+                    return []
+
+                sample_distance += spacing
+
+        return transforms
+    finally:
+        if temp_mesh is not None:
+            evaluated_obj.to_mesh_clear()
+
+
 def export_waypoints(scene, errors):
     collection = get_collection(scene, "Waypoints")
     if collection is None:
@@ -420,8 +678,22 @@ def export_sprites(scene, errors):
             mode = "single"
             evaluated_parts = 0
             manual_count = 0
+            curve_count = 0
+            custom_array_count = 0
 
-            if obj.type == "MESH" and has_any_modifier(obj):
+            if obj.type != "CURVE" and getattr(obj, "pixijs_hs_sprite_array_enabled", False):
+                placements = custom_sprite_array_transforms(obj)
+                custom_array_count = len(placements)
+                if placements:
+                    mode = "custom_array"
+
+            if not placements and obj.type == "CURVE":
+                placements = sample_curve_sprite_transforms(obj, depsgraph, errors)
+                curve_count = len(placements)
+                if placements:
+                    mode = "curve_sprite"
+
+            if not placements and obj.type == "MESH" and has_any_modifier(obj):
                 placements = evaluated_array_sprite_transforms(obj, depsgraph, errors)
                 evaluated_parts = len(placements)
                 if placements:
@@ -447,6 +719,8 @@ def export_sprites(scene, errors):
                 "modifierCount": len(obj.modifiers),
                 "modifierTypes": [modifier.type for modifier in obj.modifiers],
                 "evaluatedPartCount": evaluated_parts,
+                "customArrayCount": custom_array_count,
+                "curvePlacementCount": curve_count,
                 "exportedPlacementCount": len(placements),
                 "manualPlacementCount": manual_count,
             })
@@ -466,7 +740,7 @@ def export_sprites(scene, errors):
                     "name": sprite_name,
                     "type": sprite_type,
                     "position": engine_vec3(location),
-                    "yaw": round(math.degrees(float(rotation.z)), 6),
+                    "yaw": round(math.degrees(float(rotation.z)), 6) if rotation is not None else 0.0,
                 }
 
                 if params:
@@ -528,7 +802,7 @@ def build_stage_data(context, include_sprite_diagnostics=False):
     source = {
         "dcc": "Blender",
         "scene": source_scene,
-        "exporterVersion": "0.5.0",
+        "exporterVersion": "0.6.0",
     }
     if include_sprite_diagnostics:
         source["spriteExportDiagnostics"] = sprite_diagnostics
@@ -638,6 +912,72 @@ class VIEW3D_PT_pixijs_hyper_scaler_trigger(Panel):
         layout.label(text="Writes object-side trigger fields")
 
 
+class VIEW3D_PT_pixijs_hyper_scaler_sprite_array(Panel):
+    bl_label = "Sprite Array"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "HyperScaler"
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        if obj is None or obj.type == "CURVE":
+            return False
+        sprites_root = get_collection(context.scene, "Sprites")
+        return is_object_in_child_collection(obj, sprites_root)
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.active_object
+
+        layout.prop(obj, "pixijs_hs_sprite_array_enabled", text="Enabled")
+        column = layout.column()
+        column.enabled = obj.pixijs_hs_sprite_array_enabled
+        column.label(text="Grid Count")
+        column.prop(obj, "pixijs_hs_sprite_array_count_x", text="X")
+        column.prop(obj, "pixijs_hs_sprite_array_count_y", text="Y")
+        column.prop(obj, "pixijs_hs_sprite_array_count_z", text="Z")
+        column.label(text="Grid Step")
+        column.prop(obj, "pixijs_hs_sprite_array_step_x", text="X")
+        column.prop(obj, "pixijs_hs_sprite_array_step_y", text="Y")
+        column.prop(obj, "pixijs_hs_sprite_array_step_z", text="Z")
+        column.label(text="Preview stays visible while unselected")
+
+
+class VIEW3D_PT_pixijs_hyper_scaler_curve_sprite(Panel):
+    bl_label = "Curve Sprite"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "HyperScaler"
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj is not None and obj.type == "CURVE"
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.active_object
+        sprites_root = get_collection(context.scene, "Sprites")
+        is_sprite_curve = is_object_in_child_collection(obj, sprites_root)
+
+        if not is_sprite_curve:
+            layout.label(text='Place this curve under "Sprites/<type>/" to export', icon="INFO")
+
+        layout.prop(obj, "pixijs_hs_curve_sprite_enabled", text="Enabled")
+        column = layout.column()
+        column.enabled = obj.pixijs_hs_curve_sprite_enabled
+        column.prop(obj, "pixijs_hs_curve_sprite_spacing", text="Spacing")
+        column.prop(obj, "pixijs_hs_curve_sprite_start_offset", text="Start Offset")
+        column.prop(obj, "pixijs_hs_curve_sprite_end_inset", text="End Inset")
+        column.label(text="Local Offset")
+        column.prop(obj, "pixijs_hs_curve_sprite_offset_x", text="X")
+        column.prop(obj, "pixijs_hs_curve_sprite_offset_y", text="Y")
+        column.prop(obj, "pixijs_hs_curve_sprite_offset_z", text="Z")
+        column.label(text="Yaw is exported as 0 for billboard sprites")
+        column.label(text="Preview stays visible while unselected")
+
+
 def menu_func_export(self, _context):
     self.layout.operator(
         EXPORT_SCENE_OT_pixijs_hyper_scaler_stage.bl_idname,
@@ -649,6 +989,8 @@ CLASSES = (
     EXPORT_SCENE_OT_pixijs_hyper_scaler_stage,
     VIEW3D_PT_pixijs_hyper_scaler_stage_export,
     VIEW3D_PT_pixijs_hyper_scaler_trigger,
+    VIEW3D_PT_pixijs_hyper_scaler_sprite_array,
+    VIEW3D_PT_pixijs_hyper_scaler_curve_sprite,
 )
 
 
@@ -683,15 +1025,131 @@ def register():
         description="Optional JSON object exported as triggers[*].params",
         default="",
     )
+    bpy.types.Object.pixijs_hs_sprite_array_enabled = BoolProperty(
+        name="Sprite Array Enabled",
+        description="Export this sprite object as a simple repeated array",
+        default=False,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_count_x = bpy.props.IntProperty(
+        name="Sprite Array Count X",
+        description="How many sprite placements to export on X",
+        default=1,
+        min=1,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_count_y = bpy.props.IntProperty(
+        name="Sprite Array Count Y",
+        description="How many sprite placements to export on Y",
+        default=1,
+        min=1,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_count_z = bpy.props.IntProperty(
+        name="Sprite Array Count Z",
+        description="How many sprite placements to export on Z",
+        default=1,
+        min=1,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_step_x = FloatProperty(
+        name="Sprite Array Step X",
+        description="Local X step between grid elements",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_step_y = FloatProperty(
+        name="Sprite Array Step Y",
+        description="Local Y step between grid elements",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_step_z = FloatProperty(
+        name="Sprite Array Step Z",
+        description="Local Z step between grid elements",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_enabled = BoolProperty(
+        name="Curve Sprite Enabled",
+        description="Export this curve as evenly spaced sprite placements",
+        default=False,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_spacing = FloatProperty(
+        name="Curve Sprite Spacing",
+        description="Distance between generated sprite placements",
+        default=1.0,
+        min=0.001,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_start_offset = FloatProperty(
+        name="Curve Sprite Start Offset",
+        description="Distance from the beginning of the curve before placing the first sprite",
+        default=0.0,
+        min=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_end_inset = FloatProperty(
+        name="Curve Sprite End Inset",
+        description="Distance from the end of the curve where placement stops",
+        default=0.0,
+        min=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_offset_x = FloatProperty(
+        name="Curve Sprite Offset X",
+        description="Local X offset applied before export",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_offset_y = FloatProperty(
+        name="Curve Sprite Offset Y",
+        description="Local Y offset applied before export",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_offset_z = FloatProperty(
+        name="Curve Sprite Offset Z",
+        description="Local Z offset applied before export",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+    global SPRITE_ARRAY_PREVIEW_HANDLER
+    if SPRITE_ARRAY_PREVIEW_HANDLER is None:
+        SPRITE_ARRAY_PREVIEW_HANDLER = bpy.types.SpaceView3D.draw_handler_add(
+            draw_sprite_array_preview,
+            (),
+            "WINDOW",
+            "POST_VIEW",
+        )
 
 
 def unregister():
+    global SPRITE_ARRAY_PREVIEW_HANDLER
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
+    if SPRITE_ARRAY_PREVIEW_HANDLER is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(SPRITE_ARRAY_PREVIEW_HANDLER, "WINDOW")
+        SPRITE_ARRAY_PREVIEW_HANDLER = None
+    del bpy.types.Object.pixijs_hs_sprite_array_step_z
+    del bpy.types.Object.pixijs_hs_sprite_array_step_y
+    del bpy.types.Object.pixijs_hs_sprite_array_step_x
+    del bpy.types.Object.pixijs_hs_sprite_array_count_z
+    del bpy.types.Object.pixijs_hs_sprite_array_count_y
+    del bpy.types.Object.pixijs_hs_sprite_array_count_x
+    del bpy.types.Object.pixijs_hs_sprite_array_enabled
+    del bpy.types.Object.pixijs_hs_curve_sprite_offset_z
+    del bpy.types.Object.pixijs_hs_curve_sprite_offset_y
+    del bpy.types.Object.pixijs_hs_curve_sprite_offset_x
+    del bpy.types.Object.pixijs_hs_curve_sprite_end_inset
+    del bpy.types.Object.pixijs_hs_curve_sprite_start_offset
+    del bpy.types.Object.pixijs_hs_curve_sprite_spacing
+    del bpy.types.Object.pixijs_hs_curve_sprite_enabled
     del bpy.types.Object.pixijs_hs_trigger_params_json
     del bpy.types.Object.pixijs_hs_trigger_once
     del bpy.types.Object.pixijs_hs_trigger_event
