@@ -28,8 +28,12 @@
 
 - `Sprites` を親 Collection にする
 - 子 Collection 名が `sprites[*].type` になる
-- 各子 Collection に Empty などの配置オブジェクトを置く
+- 各子 Collection に Empty や Mesh などの配置オブジェクトを置く
 - 追加の custom property は `params` に入る
+- Blender 5 の新しい Geometry Nodes ベース `Array` を含む modifier 評価結果から、JSON 上で複製展開される
+- 従来の `Array` modifier は手動展開にも対応している
+- 同一オブジェクト内の複数 `Array` modifier / 多重配列も扱える
+- 現在の従来 `Array` 手動展開の対応は `Fixed Count` のみ
 
 例:
 
@@ -39,13 +43,16 @@
 ### 4. Triggers
 
 - `Triggers` Collection にトリガーオブジェクトを置く
-- 各オブジェクトに string の custom property `event` を付ける
-- それ以外の単純な custom property は `params` に入る
+- 推奨: `3D View > Sidebar > HyperScaler > Trigger` から編集する
+- `Event`, `Once`, `Params JSON` を object 側プロパティとして設定できる
+- 後方互換として、各オブジェクトまたはその Mesh data に custom property を付けても export できる
+- object と Mesh data の両方に同名 property がある場合は object 側を優先する
+- `Params JSON` を使わない場合は、予約語以外の単純な custom property が `params` に入る
 
 例:
 
-- `event = "Checkpoint"`
-- `event = "SpeedChange"` and `speed = 120`
+- `event = "checkpoint"`
+- `event = "speed.change"`, `once = true`, `params = {"speed": 2}`
 
 ## Scene custom properties
 
@@ -82,26 +89,7 @@ zip で入れる場合は、zip の直下に `__init__.py` がある構造にす
 ### 3D View
 
 - サイドバーの `HyperScaler` タブから export
-
-## Sprite Prep
-
-`Sprites` 用の Mesh を Geometry Nodes や Modifier で量産したあと、export 可能な個別オブジェクトへ整えるために、以下をワンタッチで行うオペレーターを追加しています。
-
-- Modifier を Apply
-- `Separate by Loose Parts`
-- `Origin to Geometry`
-
-使い方:
-
-1. 対象の Mesh object を選択
-2. `3D View > Sidebar > HyperScaler`
-3. `Prepare Sprite Exports` を実行
-
-想定用途:
-
-- Array 的に並べた tree / prop の列
-- GN で量産した sprite marker
-- export 前に個別 object 化したい Mesh 群
+- `Sprite Diagnostics` をオンにすると、`source.spriteExportDiagnostics` を JSON に含める
 
 ## 制限
 
@@ -109,5 +97,8 @@ zip で入れる場合は、zip の直下に `__init__.py` がある構造にす
 - Collider / Trigger shape は box のみです
 - 回転変換は v1 の簡易マッピングです
 - object custom property は string / number / boolean のみ出力します
+- 従来 `Array` modifier の手動展開は `Fixed Count` のみ対応です
+- `Array` の複製数は安全のため 4096 件までに制限しています
+- `source.spriteExportDiagnostics` はデバッグ用途で、必要な時だけ有効化する想定です
 
 次の段階では、Curve からの waypoint サンプリング、より厳密な回転変換、エクスポート前バリデーション強化を追加する想定です。

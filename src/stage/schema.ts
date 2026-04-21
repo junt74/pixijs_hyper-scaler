@@ -52,6 +52,7 @@ export type StageTrigger = {
   id: string;
   name?: string;
   event: string;
+  once?: boolean;
   position: Vec3;
   rotation: Rotation3;
   halfExtents: Vec3;
@@ -220,6 +221,9 @@ function validateTrigger(
   }
   if (!isNonEmptyString(value.event)) {
     pushError(errors, `${path}.event`, 'must be a non-empty string');
+  }
+  if (value.once !== undefined && typeof value.once !== 'boolean') {
+    pushError(errors, `${path}.once`, 'must be a boolean when present');
   }
   if (!isVec3(value.position)) {
     pushError(errors, `${path}.position`, 'must be a Vec3');

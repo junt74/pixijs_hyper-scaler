@@ -36,6 +36,22 @@ type ProjectedPoint = {
   z: number;
 };
 
+type TriggerOverlapState = {
+  activeTriggerIds: Set<string>;
+  firedTriggerIds: Set<string>;
+};
+
+type TriggerRuntimeState = {
+  waypointTravelSpeed: number;
+  waypointTravelSpeedTransition: {
+    active: boolean;
+    elapsedMs: number;
+    durationMs: number;
+    fromSpeed: number;
+    toSpeed: number;
+  };
+};
+
 const FILTER_VERTEX_SRC = `
 in vec2 aPosition;
 out vec2 vTextureCoord;
@@ -263,6 +279,53 @@ function triggerScreenSize(trigger: StageTrigger, projectedZ: number, config: Pr
   };
 }
 
+function rotatePointInverse(
+  point: { x: number; y: number; z: number },
+  rotation: StageTrigger['rotation'],
+): { x: number; y: number; z: number } {
+  const yaw = (-rotation.yaw * Math.PI) / 180;
+  const pitch = (-rotation.pitch * Math.PI) / 180;
+  const roll = (-rotation.roll * Math.PI) / 180;
+
+  const cosYaw = Math.cos(yaw);
+  const sinYaw = Math.sin(yaw);
+  const cosPitch = Math.cos(pitch);
+  const sinPitch = Math.sin(pitch);
+  const cosRoll = Math.cos(roll);
+  const sinRoll = Math.sin(roll);
+
+  const yawX = cosYaw * point.x - sinYaw * point.z;
+  const yawZ = sinYaw * point.x + cosYaw * point.z;
+  const yawY = point.y;
+
+  const pitchY = cosPitch * yawY - sinPitch * yawZ;
+  const pitchZ = sinPitch * yawY + cosPitch * yawZ;
+  const pitchX = yawX;
+
+  return {
+    x: cosRoll * pitchX - sinRoll * pitchY,
+    y: sinRoll * pitchX + cosRoll * pitchY,
+    z: pitchZ,
+  };
+}
+
+function isPointInsideTrigger(point: { x: number; y: number; z: number }, trigger: StageTrigger): boolean {
+  const local = rotatePointInverse(
+    {
+      x: point.x - trigger.position.x,
+      y: point.y - trigger.position.y,
+      z: point.z - trigger.position.z,
+    },
+    trigger.rotation,
+  );
+
+  return (
+    Math.abs(local.x) <= trigger.halfExtents.x &&
+    Math.abs(local.y) <= trigger.halfExtents.y &&
+    Math.abs(local.z) <= trigger.halfExtents.z
+  );
+}
+
 function drawColliderVolumes(
   graphics: Graphics,
   colliders: StageCollider[],
@@ -295,9 +358,9 @@ function drawTriggerVolumes(
   triggers: StageTrigger[],
   camera: CameraPoint,
   config: ProjectionConfig,
+  activeTriggerIds: Set<string>,
 ): void {
   graphics.clear();
-  graphics.setStrokeStyle({ width: 1.5, color: 0xff6699, alpha: 0.95 });
 
   for (const trigger of triggers) {
     const projected = projectPoint(
@@ -312,9 +375,103 @@ function drawTriggerVolumes(
     }
 
     const { width, height } = triggerScreenSize(trigger, projected.z, config);
+    const isActive = activeTriggerIds.has(trigger.id);
+    graphics.setStrokeStyle({
+      width: isActive ? 2.5 : 1.5,
+      color: isActive ? 0x66ffcc : 0xff6699,
+      alpha: 0.95,
+    });
     graphics.rect(projected.x - width / 2, projected.y - height / 2, width, height);
     graphics.stroke();
   }
+}
+
+function updateWaypointTravelSpeed(runtimeState: TriggerRuntimeState, dt: number): void {
+  const transition = runtimeState.waypointTravelSpeedTransition;
+  if (!transition.active) {
+    return;
+  }
+
+  transition.elapsedMs += dt * 1000;
+  const progress = transition.durationMs <= 0
+    ? 1
+    : Math.min(1, transition.elapsedMs / transition.durationMs);
+
+  runtimeState.waypointTravelSpeed =
+    transition.fromSpeed + (transition.toSpeed - transition.fromSpeed) * progress;
+
+  if (progress >= 1) {
+    transition.active = false;
+    runtimeState.waypointTravelSpeed = transition.toSpeed;
+  }
+}
+
+function updateTriggerOverlaps(
+  triggers: StageTrigger[],
+  camera: CameraPoint,
+  overlapState: TriggerOverlapState,
+  runtimeState: TriggerRuntimeState,
+): void {
+  const nextActiveTriggerIds = new Set<string>();
+
+  for (const trigger of triggers) {
+    if (isPointInsideTrigger(camera, trigger)) {
+      nextActiveTriggerIds.add(trigger.id);
+      const hasEnteredThisFrame = !overlapState.activeTriggerIds.has(trigger.id);
+      const hasAlreadyFired = overlapState.firedTriggerIds.has(trigger.id);
+      const shouldFire = hasEnteredThisFrame && (!trigger.once || !hasAlreadyFired);
+
+      if (shouldFire) {
+        if (trigger.event === 'speed') {
+          const speedParam = trigger.params?.speed;
+          if (typeof speedParam === 'number' && Number.isFinite(speedParam)) {
+            const durationMillisParam = trigger.params?.durationMillis;
+            const hasDurationMillis =
+              typeof durationMillisParam === 'number' &&
+              Number.isFinite(durationMillisParam) &&
+              durationMillisParam > 0;
+
+            if (hasDurationMillis) {
+              runtimeState.waypointTravelSpeedTransition = {
+                active: true,
+                elapsedMs: 0,
+                durationMs: durationMillisParam,
+                fromSpeed: runtimeState.waypointTravelSpeed,
+                toSpeed: speedParam,
+              };
+            } else {
+              runtimeState.waypointTravelSpeed = speedParam;
+              runtimeState.waypointTravelSpeedTransition.active = false;
+            }
+          } else {
+            console.warn('[Trigger] Ignored speed trigger without numeric params.speed', {
+              id: trigger.id,
+              event: trigger.event,
+              params: trigger.params ?? {},
+            });
+          }
+        }
+
+        console.log('[Trigger] Enter', {
+          id: trigger.id,
+          event: trigger.event,
+          once: trigger.once ?? false,
+          waypointTravelSpeed: runtimeState.waypointTravelSpeed,
+          camera: { x: camera.x, y: camera.y, z: camera.z },
+          params: trigger.params ?? {},
+        });
+        overlapState.firedTriggerIds.add(trigger.id);
+      }
+    } else if (overlapState.activeTriggerIds.has(trigger.id)) {
+      console.log('[Trigger] Exit', {
+        id: trigger.id,
+        event: trigger.event,
+        camera: { x: camera.x, y: camera.y, z: camera.z },
+      });
+    }
+  }
+
+  overlapState.activeTriggerIds = nextActiveTriggerIds;
 }
 
 function makeStageSpriteInstances(
@@ -496,7 +653,20 @@ export async function loadStage(
   const spriteInstances = makeStageSpriteInstances(app, data, config);
   const waypointPath = buildWaypointPath(data.waypoints);
   let waypointTravelDistance = 0;
-  const waypointTravelSpeed = 1;
+  const triggerOverlapState: TriggerOverlapState = {
+    activeTriggerIds: new Set<string>(),
+    firedTriggerIds: new Set<string>(),
+  };
+  const triggerRuntimeState: TriggerRuntimeState = {
+    waypointTravelSpeed: 1,
+    waypointTravelSpeedTransition: {
+      active: false,
+      elapsedMs: 0,
+      durationMs: 0,
+      fromSpeed: 1,
+      toSpeed: 1,
+    },
+  };
   let camera: CameraPoint = data.waypoints[0]
     ? { ...data.waypoints[0].position, yaw: 0 }
     : { x: 0, y: 0, z: 0, yaw: 0 };
@@ -504,7 +674,8 @@ export async function loadStage(
   return {
     data,
     update(dt: number) {
-      waypointTravelDistance += waypointTravelSpeed * dt;
+      updateWaypointTravelSpeed(triggerRuntimeState, dt);
+      waypointTravelDistance += triggerRuntimeState.waypointTravelSpeed * dt;
       const movingWaypoint = sampleWaypointPath(
         waypointPath,
         pingPong(waypointTravelDistance, waypointPath.totalLength),
@@ -518,7 +689,8 @@ export async function loadStage(
 
       updateStageSprites(spriteInstances, camera, config);
       drawColliderVolumes(colliderGraphics, data.colliders, camera, config);
-      drawTriggerVolumes(triggerGraphics, data.triggers, camera, config);
+      updateTriggerOverlaps(data.triggers, camera, triggerOverlapState, triggerRuntimeState);
+      drawTriggerVolumes(triggerGraphics, data.triggers, camera, config, triggerOverlapState.activeTriggerIds);
     },
   };
 }

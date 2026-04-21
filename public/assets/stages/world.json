@@ -4,10 +4,11 @@
   "name": "test-stage",
   "source": {
     "dcc": "Blender",
-    "scene": "world.blend"
+    "scene": "world.blend",
+    "exporterVersion": "0.5.0"
   },
   "meta": {
-    "exportedAt": "2026-04-21T05:20:11Z"
+    "exportedAt": "2026-04-21T07:08:04Z"
   },
   "waypoints": [
     {
@@ -51,8 +52,8 @@
   ],
   "sprites": [
     {
-      "id": "spr_props_wood001",
-      "name": "wood.001",
+      "id": "spr_props_wood001_000",
+      "name": "wood.001.000",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -62,8 +63,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood002",
-      "name": "wood.002",
+      "id": "spr_props_wood001_001",
+      "name": "wood.001.001",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_002",
+      "name": "wood.001.002",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -73,30 +85,8 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood003",
-      "name": "wood.003",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 4.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood004",
-      "name": "wood.004",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 4.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood005",
-      "name": "wood.005",
+      "id": "spr_props_wood001_003",
+      "name": "wood.001.003",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -106,8 +96,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood006",
-      "name": "wood.006",
+      "id": "spr_props_wood001_004",
+      "name": "wood.001.004",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_005",
+      "name": "wood.001.005",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -117,30 +118,8 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood007",
-      "name": "wood.007",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 6.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood008",
-      "name": "wood.008",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 6.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood009",
-      "name": "wood.009",
+      "id": "spr_props_wood001_006",
+      "name": "wood.001.006",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -150,8 +129,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood010",
-      "name": "wood.010",
+      "id": "spr_props_wood001_007",
+      "name": "wood.001.007",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_008",
+      "name": "wood.001.008",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -161,30 +151,8 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood011",
-      "name": "wood.011",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 8.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood012",
-      "name": "wood.012",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 8.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood013",
-      "name": "wood.013",
+      "id": "spr_props_wood001_009",
+      "name": "wood.001.009",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -194,8 +162,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood014",
-      "name": "wood.014",
+      "id": "spr_props_wood001_010",
+      "name": "wood.001.010",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_011",
+      "name": "wood.001.011",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -205,30 +184,8 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood015",
-      "name": "wood.015",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 10.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood016",
-      "name": "wood.016",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 10.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood017",
-      "name": "wood.017",
+      "id": "spr_props_wood001_012",
+      "name": "wood.001.012",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -238,8 +195,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood018",
-      "name": "wood.018",
+      "id": "spr_props_wood001_013",
+      "name": "wood.001.013",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_014",
+      "name": "wood.001.014",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -249,74 +217,41 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood019",
-      "name": "wood.019",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 12.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood020",
-      "name": "wood.020",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 12.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood021",
-      "name": "wood.021",
+      "id": "spr_props_wood001_015",
+      "name": "wood.001.015",
       "type": "props",
       "position": {
         "x": -6.0,
         "y": -2.0,
-        "z": 14.000001
+        "z": 14.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood022",
-      "name": "wood.022",
+      "id": "spr_props_wood001_016",
+      "name": "wood.001.016",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_017",
+      "name": "wood.001.017",
       "type": "props",
       "position": {
         "x": -2.0,
         "y": -2.0,
-        "z": 14.000001
+        "z": 14.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood023",
-      "name": "wood.023",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 14.000001
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood024",
-      "name": "wood.024",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 14.000001
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood025",
-      "name": "wood.025",
+      "id": "spr_props_wood001_018",
+      "name": "wood.001.018",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -326,8 +261,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood026",
-      "name": "wood.026",
+      "id": "spr_props_wood001_019",
+      "name": "wood.001.019",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_020",
+      "name": "wood.001.020",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -337,30 +283,8 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood027",
-      "name": "wood.027",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 16.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood028",
-      "name": "wood.028",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 16.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood029",
-      "name": "wood.029",
+      "id": "spr_props_wood001_021",
+      "name": "wood.001.021",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -370,8 +294,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood030",
-      "name": "wood.030",
+      "id": "spr_props_wood001_022",
+      "name": "wood.001.022",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_023",
+      "name": "wood.001.023",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -381,74 +316,41 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood031",
-      "name": "wood.031",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 18.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood032",
-      "name": "wood.032",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 18.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood033",
-      "name": "wood.033",
+      "id": "spr_props_wood001_024",
+      "name": "wood.001.024",
       "type": "props",
       "position": {
         "x": -6.0,
         "y": -2.0,
-        "z": 20.000002
+        "z": 20.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood034",
-      "name": "wood.034",
+      "id": "spr_props_wood001_025",
+      "name": "wood.001.025",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_026",
+      "name": "wood.001.026",
       "type": "props",
       "position": {
         "x": -2.0,
         "y": -2.0,
-        "z": 20.000002
+        "z": 20.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood035",
-      "name": "wood.035",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 20.000002
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood036",
-      "name": "wood.036",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 20.000002
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood037",
-      "name": "wood.037",
+      "id": "spr_props_wood001_027",
+      "name": "wood.001.027",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -458,8 +360,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood038",
-      "name": "wood.038",
+      "id": "spr_props_wood001_028",
+      "name": "wood.001.028",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_029",
+      "name": "wood.001.029",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -469,74 +382,41 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood039",
-      "name": "wood.039",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 22.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood040",
-      "name": "wood.040",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 22.0
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood041",
-      "name": "wood.041",
+      "id": "spr_props_wood001_030",
+      "name": "wood.001.030",
       "type": "props",
       "position": {
         "x": -6.0,
         "y": -2.0,
-        "z": 23.999998
+        "z": 24.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood042",
-      "name": "wood.042",
+      "id": "spr_props_wood001_031",
+      "name": "wood.001.031",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_032",
+      "name": "wood.001.032",
       "type": "props",
       "position": {
         "x": -2.0,
         "y": -2.0,
-        "z": 23.999998
+        "z": 24.0
       },
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood043",
-      "name": "wood.043",
-      "type": "props",
-      "position": {
-        "x": 2.0,
-        "y": -2.0,
-        "z": 23.999998
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood044",
-      "name": "wood.044",
-      "type": "props",
-      "position": {
-        "x": 6.0,
-        "y": -2.0,
-        "z": 23.999998
-      },
-      "yaw": 0.0
-    },
-    {
-      "id": "spr_props_wood045",
-      "name": "wood.045",
+      "id": "spr_props_wood001_033",
+      "name": "wood.001.033",
       "type": "props",
       "position": {
         "x": -6.0,
@@ -546,8 +426,19 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood046",
-      "name": "wood.046",
+      "id": "spr_props_wood001_034",
+      "name": "wood.001.034",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": -2.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_035",
+      "name": "wood.001.035",
       "type": "props",
       "position": {
         "x": -2.0,
@@ -557,8 +448,767 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood047",
-      "name": "wood.047",
+      "id": "spr_props_wood001_036",
+      "name": "wood.001.036",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_037",
+      "name": "wood.001.037",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_038",
+      "name": "wood.001.038",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_039",
+      "name": "wood.001.039",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_040",
+      "name": "wood.001.040",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_041",
+      "name": "wood.001.041",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_042",
+      "name": "wood.001.042",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_043",
+      "name": "wood.001.043",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_044",
+      "name": "wood.001.044",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_045",
+      "name": "wood.001.045",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_046",
+      "name": "wood.001.046",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_047",
+      "name": "wood.001.047",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_048",
+      "name": "wood.001.048",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_049",
+      "name": "wood.001.049",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_050",
+      "name": "wood.001.050",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_051",
+      "name": "wood.001.051",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_052",
+      "name": "wood.001.052",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_053",
+      "name": "wood.001.053",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_054",
+      "name": "wood.001.054",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_055",
+      "name": "wood.001.055",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_056",
+      "name": "wood.001.056",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_057",
+      "name": "wood.001.057",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_058",
+      "name": "wood.001.058",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_059",
+      "name": "wood.001.059",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_060",
+      "name": "wood.001.060",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_061",
+      "name": "wood.001.061",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_062",
+      "name": "wood.001.062",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_063",
+      "name": "wood.001.063",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_064",
+      "name": "wood.001.064",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_065",
+      "name": "wood.001.065",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_066",
+      "name": "wood.001.066",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_067",
+      "name": "wood.001.067",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_068",
+      "name": "wood.001.068",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_069",
+      "name": "wood.001.069",
+      "type": "props",
+      "position": {
+        "x": -6.0,
+        "y": 0.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_070",
+      "name": "wood.001.070",
+      "type": "props",
+      "position": {
+        "x": -4.0,
+        "y": 0.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood001_071",
+      "name": "wood.001.071",
+      "type": "props",
+      "position": {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_000",
+      "name": "wood.002.000",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_001",
+      "name": "wood.002.001",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_002",
+      "name": "wood.002.002",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_003",
+      "name": "wood.002.003",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_004",
+      "name": "wood.002.004",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_005",
+      "name": "wood.002.005",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_006",
+      "name": "wood.002.006",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_007",
+      "name": "wood.002.007",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_008",
+      "name": "wood.002.008",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_009",
+      "name": "wood.002.009",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_010",
+      "name": "wood.002.010",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_011",
+      "name": "wood.002.011",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_012",
+      "name": "wood.002.012",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_013",
+      "name": "wood.002.013",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_014",
+      "name": "wood.002.014",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_015",
+      "name": "wood.002.015",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_016",
+      "name": "wood.002.016",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_017",
+      "name": "wood.002.017",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_018",
+      "name": "wood.002.018",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_019",
+      "name": "wood.002.019",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_020",
+      "name": "wood.002.020",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_021",
+      "name": "wood.002.021",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_022",
+      "name": "wood.002.022",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_023",
+      "name": "wood.002.023",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_024",
+      "name": "wood.002.024",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_025",
+      "name": "wood.002.025",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_026",
+      "name": "wood.002.026",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_027",
+      "name": "wood.002.027",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_028",
+      "name": "wood.002.028",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_029",
+      "name": "wood.002.029",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_030",
+      "name": "wood.002.030",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": -2.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_031",
+      "name": "wood.002.031",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_032",
+      "name": "wood.002.032",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": -2.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_033",
+      "name": "wood.002.033",
       "type": "props",
       "position": {
         "x": 2.0,
@@ -568,12 +1218,419 @@
       "yaw": 0.0
     },
     {
-      "id": "spr_props_wood048",
-      "name": "wood.048",
+      "id": "spr_props_wood002_034",
+      "name": "wood.002.034",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": -2.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_035",
+      "name": "wood.002.035",
       "type": "props",
       "position": {
         "x": 6.0,
         "y": -2.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_036",
+      "name": "wood.002.036",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_037",
+      "name": "wood.002.037",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_038",
+      "name": "wood.002.038",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 4.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_039",
+      "name": "wood.002.039",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_040",
+      "name": "wood.002.040",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_041",
+      "name": "wood.002.041",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 6.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_042",
+      "name": "wood.002.042",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_043",
+      "name": "wood.002.043",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_044",
+      "name": "wood.002.044",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 8.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_045",
+      "name": "wood.002.045",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_046",
+      "name": "wood.002.046",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_047",
+      "name": "wood.002.047",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 10.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_048",
+      "name": "wood.002.048",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_049",
+      "name": "wood.002.049",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_050",
+      "name": "wood.002.050",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 12.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_051",
+      "name": "wood.002.051",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_052",
+      "name": "wood.002.052",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_053",
+      "name": "wood.002.053",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 14.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_054",
+      "name": "wood.002.054",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_055",
+      "name": "wood.002.055",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_056",
+      "name": "wood.002.056",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 16.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_057",
+      "name": "wood.002.057",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_058",
+      "name": "wood.002.058",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_059",
+      "name": "wood.002.059",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 18.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_060",
+      "name": "wood.002.060",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_061",
+      "name": "wood.002.061",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_062",
+      "name": "wood.002.062",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 20.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_063",
+      "name": "wood.002.063",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_064",
+      "name": "wood.002.064",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_065",
+      "name": "wood.002.065",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 22.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_066",
+      "name": "wood.002.066",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_067",
+      "name": "wood.002.067",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_068",
+      "name": "wood.002.068",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
+        "z": 24.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_069",
+      "name": "wood.002.069",
+      "type": "props",
+      "position": {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_070",
+      "name": "wood.002.070",
+      "type": "props",
+      "position": {
+        "x": 4.0,
+        "y": 0.0,
+        "z": 26.0
+      },
+      "yaw": 0.0
+    },
+    {
+      "id": "spr_props_wood002_071",
+      "name": "wood.002.071",
+      "type": "props",
+      "position": {
+        "x": 6.0,
+        "y": 0.0,
         "z": 26.0
       },
       "yaw": 0.0
@@ -581,9 +1638,10 @@
   ],
   "triggers": [
     {
-      "id": "trg_立方体001",
-      "name": "立方体.001",
-      "event": "abc",
+      "id": "trg_trig001",
+      "name": "trig.001",
+      "event": "speed",
+      "once": true,
       "position": {
         "x": 0.0,
         "y": 0.0,
@@ -598,6 +1656,10 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "params": {
+        "speed": 8,
+        "durationMillis": 2000
       }
     }
   ]
