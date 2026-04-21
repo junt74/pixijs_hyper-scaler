@@ -58,9 +58,20 @@ Scene に以下を持たせるとトップレベルに反映されます。
 
 ## インストール
 
+最も確実なのは、単一ファイル版を入れる方法です。
+
 1. Blender で `Edit > Preferences > Add-ons > Install...`
-2. このフォルダを zip にして選ぶか、`__init__.py` を含むフォルダを指定する
-3. `PixiJS Hyper Scaler Stage Exporter` を有効化する
+2. [tools/blender_addons/pixijs_hyper_scaler_stage_exporter.py](/Users/junt74/Projects/PixiJS/pixijs_hyper-scaler/tools/blender_addons/pixijs_hyper_scaler_stage_exporter.py) を選ぶ
+3. 一覧で `PixiJS Hyper Scaler Stage Exporter` を検索して有効化する
+
+zip で入れる場合は、zip の直下に `__init__.py` がある構造にする。
+つまり `pixijs_hyper_scaler_stage_exporter/` フォルダをそのまま zip にする。
+
+やってはいけない例:
+
+- `tools/` ごと zip する
+- `blender_addons/` ごと zip する
+- フォルダをそのまま選ぶ
 
 ## 使い方
 
@@ -71,6 +82,26 @@ Scene に以下を持たせるとトップレベルに反映されます。
 ### 3D View
 
 - サイドバーの `HyperScaler` タブから export
+
+## Sprite Prep
+
+`Sprites` 用の Mesh を Geometry Nodes や Modifier で量産したあと、export 可能な個別オブジェクトへ整えるために、以下をワンタッチで行うオペレーターを追加しています。
+
+- Modifier を Apply
+- `Separate by Loose Parts`
+- `Origin to Geometry`
+
+使い方:
+
+1. 対象の Mesh object を選択
+2. `3D View > Sidebar > HyperScaler`
+3. `Prepare Sprite Exports` を実行
+
+想定用途:
+
+- Array 的に並べた tree / prop の列
+- GN で量産した sprite marker
+- export 前に個別 object 化したい Mesh 群
 
 ## 制限
 

@@ -10,6 +10,8 @@
   入力、オーディオ、アセットロード、シーン管理などの選定方針
 - `Stage_JSON_Schema_Doc3.md`
   Blender などの DCC から出力する `stage.json` の初版スキーマ
+- `Blender_GN_Sprite_Array_Workflow_Doc5.md`
+  Blender 5 の Geometry Nodes で Sprite を等間隔複製し、export へつなぐ制作フロー
 
 ## 記述する内容の例
 

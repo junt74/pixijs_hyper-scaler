@@ -17,3 +17,6 @@ export type {
   StageWaypoint,
   Vec3,
 } from './schema';
+
+export { loadStage } from './loader';
+export type { LoadedStage } from './loader';
