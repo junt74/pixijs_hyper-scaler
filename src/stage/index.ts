@@ -19,4 +19,4 @@ export type {
 } from './schema';
 
 export { loadStage } from './loader';
-export type { LoadedStage } from './loader';
+export type { LoadedStage, StageUpdateProfile } from './loader';

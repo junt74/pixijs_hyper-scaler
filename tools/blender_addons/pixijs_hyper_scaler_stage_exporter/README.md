@@ -28,7 +28,8 @@
 
 - `Sprites` を親 Collection にする
 - 子 Collection 名が `sprites[*].type` になる
-- 各子 Collection に Empty や Mesh などの配置オブジェクトを置く
+- 各子 Collection には通常 sprite 用に `Empty` を置く
+- 通常 sprite の `Display As` は `Plain Axes` を使う
 - `CURVE` object も置ける
 - 追加の custom property は `params` に入る
 - 通常 sprite object には `Sprite Array` を設定できる
@@ -36,6 +37,7 @@
 - 従来の `Array` modifier は手動展開にも対応している
 - 同一オブジェクト内の複数 `Array` modifier / 多重配列も扱える
 - `CURVE` は `Curve Sprite` 設定を有効にすると、等間隔に `sprites[]` へ展開される
+- `Curve Sprite` には中心基準の `X Replication` があり、1 本の Curve から床板の横並びを作れる
 - 現在の従来 `Array` 手動展開の対応は `Fixed Count` のみ
 
 例:
@@ -45,10 +47,11 @@
 
 ### 3.1 Sprite Array
 
-- `Sprites/<type>/` 配下の通常 object を選択
+- `Sprites/<type>/` 配下の通常 `Empty` object を選択
 - `3D View > Sidebar > HyperScaler > Sprite Array` を開く
 - `Enabled` をオンにする
 - `Grid Count X/Y/Z` と `Grid Step X/Y/Z` を設定する
+- 必要なら `Center On Base` の X/Y/Z を個別にオンにして、基準位置を中心に複製する
 - 配置は常に XYZ 軸に揃った直交格子として扱われる
 - active object については 3D View にラインとマーカーでプレビューが表示される
 - export 時にはその配置が `sprites[]` へ展開される
@@ -59,17 +62,24 @@
 - `3D View > Sidebar > HyperScaler > Curve Sprite` を開く
 - `Enabled` をオンにする
 - `Spacing` で配置間隔を決める
+- `X Replication` の `Count` と `Step` で、各サンプル点を Curve のローカル X 方向へ中心対称に複製できる
 - 必要なら `Start Offset` / `End Inset` / `Local Offset` を設定する
 - billboard 前提のため `yaw` は `0` で export される
 
 ### 4. Triggers
 
-- `Triggers` Collection にトリガーオブジェクトを置く
+- `Triggers` Collection に `Empty` を置く
+- `Empty` の `Display As` は `Sphere` を使う
+- `Radius` と object scale から `halfExtents` が計算される
 - 推奨: `3D View > Sidebar > HyperScaler > Trigger` から編集する
-- `Event`, `Once`, `Params JSON` を object 側プロパティとして設定できる
+- `Trigger` パネルから `Display As` と `Radius` も確認できる
+- `Event` はドロップダウンで選べる。`speed-change` や `checkpoint`、必要なら `Custom` も使える
+- `Once` に加えて `speed` / `durationMillis` を型付き UI で設定できる
+- `Params JSON` は追加パラメータや上級者向けの直接編集に使える
 - 後方互換として、各オブジェクトまたはその Mesh data に custom property を付けても export できる
 - object と Mesh data の両方に同名 property がある場合は object 側を優先する
 - `Params JSON` を使わない場合は、予約語以外の単純な custom property が `params` に入る
+- 型付き UI で設定した値は、同じキーが `Params JSON` にあってもそちらを上書きする
 
 例:
 
@@ -113,19 +123,22 @@ zip で入れる場合は、zip の直下に `__init__.py` がある構造にす
 - サイドバーの `HyperScaler` タブから export
 - `Sprite Diagnostics` をオンにすると、`source.spriteExportDiagnostics` を JSON に含める
 - `Trigger` パネルで trigger 用の `Event / Once / Params JSON` を編集できる
+- `Trigger` パネルで `Event` ドロップダウンと `speed` / `durationMillis` を直接編集できる
 - `Sprite Array` パネルで通常 sprite object の反復配置とプレビューを設定できる
+- 通常 sprite object は `Empty + Plain Axes` を前提にしている
 - `Curve Sprite` パネルで curve から sprite を並べる設定ができる
 
 ## 制限
 
 - Waypoints は現時点では Curve 等間隔サンプリングではなく Collection 内オブジェクト列です
-- Collider / Trigger shape は box のみです
+- Collider は box のみ、Trigger は Empty Sphere から box volume として出力します
 - 回転変換は v1 の簡易マッピングです
 - object custom property は string / number / boolean のみ出力します
 - 従来 `Array` modifier の手動展開は `Fixed Count` のみ対応です
 - `Sprite Array` の 3D View プレビューは active object のみ表示します
 - `Curve Sprite` は評価後メッシュの折れ線を元にサンプリングするため、複雑な curve 設定では意図と差が出る場合があります
-- `Array` の複製数は安全のため 4096 件までに制限しています
+- `Array` の複製数は安全のため 65536 件までに制限しています
 - `source.spriteExportDiagnostics` はデバッグ用途で、必要な時だけ有効化する想定です
 
-次の段階では、Curve からの waypoint サンプリング、より厳密な回転変換、エクスポート前バリデーション強化を追加する想定です。
+次の段階では、Curve からの waypoint サンプリング、より厳密な回転変換、エクスポート前バリデーション強化、
+さらに Trigger の `Event` 種類に応じて `params` UI の内容を切り替える対応を追加する想定です。

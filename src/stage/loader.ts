@@ -1,7 +1,14 @@
 import type { Application } from 'pixi.js';
-import { Assets, Filter, Graphics, Sprite, Texture, UniformGroup } from 'pixi.js';
+import { Assets, Graphics, Sprite, Texture } from 'pixi.js';
 
-import { parseStageData, type StageCollider, type StageDataV1, type StageTrigger, type StageWaypoint } from './schema';
+import {
+  parseStageData,
+  type StageCollider,
+  type StageDataV1,
+  type StageSprite,
+  type StageTrigger,
+  type StageWaypoint,
+} from './schema';
 
 type ProjectionConfig = {
   focalX: number;
@@ -52,123 +59,18 @@ type TriggerRuntimeState = {
   };
 };
 
-const FILTER_VERTEX_SRC = `
-in vec2 aPosition;
-out vec2 vTextureCoord;
-
-uniform vec4 uInputSize;
-uniform vec4 uOutputFrame;
-uniform vec4 uOutputTexture;
-
-vec4 filterVertexPosition(void)
-{
-  vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-  position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
-  position.y = (position.y * (2.0 * uOutputTexture.z / uOutputTexture.y)) - uOutputTexture.z;
-
-  return vec4(position, 0.0, 1.0);
-}
-
-vec2 filterTextureCoord(void)
-{
-  return aPosition * (uOutputFrame.zw * uInputSize.zw);
-}
-
-void main(void)
-{
-  gl_Position = filterVertexPosition();
-  vTextureCoord = filterTextureCoord();
-}
-`;
-
-const ALPHA_CUTOUT_FRAGMENT_SRC = `
-in vec2 vTextureCoord;
-out vec4 finalColor;
-
-uniform sampler2D uTexture;
-uniform float uAlphaCutoff;
-
-void main(void)
-{
-  vec4 sampleColor = texture(uTexture, vTextureCoord);
-
-  if (sampleColor.a < uAlphaCutoff) {
-    discard;
-  }
-
-  vec3 opaqueColor = sampleColor.rgb;
-
-  if (sampleColor.a > 0.0) {
-    opaqueColor /= sampleColor.a;
-  }
-
-  finalColor = vec4(opaqueColor, 1.0);
-}
-`;
-
-const ALPHA_CUTOUT_WGSL_SRC = `
-struct GlobalFilterUniforms {
-  uInputSize: vec4<f32>,
-  uInputPixel: vec4<f32>,
-  uInputClamp: vec4<f32>,
-  uOutputFrame: vec4<f32>,
-  uGlobalFrame: vec4<f32>,
-  uOutputTexture: vec4<f32>,
-};
-
-struct CutoutUniforms {
-  uAlphaCutoff: f32,
-};
-
-@group(0) @binding(0) var<uniform> gfu: GlobalFilterUniforms;
-@group(0) @binding(1) var uTexture: texture_2d<f32>;
-@group(0) @binding(2) var uSampler: sampler;
-@group(1) @binding(0) var<uniform> cutoutUniforms: CutoutUniforms;
-
-struct VSOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-};
-
-fn filterVertexPosition(aPosition: vec2<f32>) -> vec4<f32>
-{
-  var position = aPosition * gfu.uOutputFrame.zw + gfu.uOutputFrame.xy;
-  position.x = position.x * (2.0 / gfu.uOutputTexture.x) - 1.0;
-  position.y = (position.y * (2.0 * gfu.uOutputTexture.z / gfu.uOutputTexture.y)) - gfu.uOutputTexture.z;
-
-  return vec4(position, 0.0, 1.0);
-}
-
-fn filterTextureCoord(aPosition: vec2<f32>) -> vec2<f32>
-{
-  return aPosition * (gfu.uOutputFrame.zw * gfu.uInputSize.zw);
-}
-
-@vertex
-fn mainVertex(@location(0) aPosition: vec2<f32>) -> VSOutput
-{
-  return VSOutput(
-    filterVertexPosition(aPosition),
-    filterTextureCoord(aPosition)
-  );
-}
-
-@fragment
-fn mainFragment(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32>
-{
-  let sampleColor = textureSample(uTexture, uSampler, uv);
-
-  if (sampleColor.a < cutoutUniforms.uAlphaCutoff) {
-    discard;
-  }
-
-  return vec4(sampleColor.rgb, 1.0);
-}
-`;
-
 export type LoadedStage = {
   data: StageDataV1;
-  update: (dt: number) => void;
+  update: (dt: number) => StageUpdateProfile;
+};
+
+export type StageUpdateProfile = {
+  totalMs: number;
+  cameraMs: number;
+  spritesMs: number;
+  visibleSpriteCount: number;
+  collidersMs: number;
+  triggersMs: number;
 };
 
 type WaypointSegment = {
@@ -215,7 +117,7 @@ function makeVolumeGraphics(color: number): Graphics {
   return graphics;
 }
 
-function selectSpriteTexturePath(type: string): string {
+function selectSpriteTexturePathByType(type: string): string {
   switch (type.toLowerCase()) {
     case 'enemy':
     case 'enemya':
@@ -227,29 +129,27 @@ function selectSpriteTexturePath(type: string): string {
   }
 }
 
-function createAlphaCutoutFilter(alphaCutoff: number): Filter {
-  return Filter.from({
-    gpu: {
-      vertex: {
-        source: ALPHA_CUTOUT_WGSL_SRC,
-        entryPoint: 'mainVertex',
-      },
-      fragment: {
-        source: ALPHA_CUTOUT_WGSL_SRC,
-        entryPoint: 'mainFragment',
-      },
-    },
-    gl: {
-      vertex: FILTER_VERTEX_SRC,
-      fragment: ALPHA_CUTOUT_FRAGMENT_SRC,
-      name: 'alpha-cutout-filter',
-    },
-    resources: {
-      cutoutUniforms: new UniformGroup({
-        uAlphaCutoff: { value: alphaCutoff, type: 'f32' },
-      }),
-    },
-  });
+function spriteTextureKeyFromName(name?: string): string | null {
+  if (typeof name !== 'string') {
+    return null;
+  }
+
+  const [textureKey] = name.split('.', 1);
+  if (textureKey === undefined) {
+    return null;
+  }
+
+  const normalizedTextureKey = textureKey.trim().toLowerCase();
+  return normalizedTextureKey.length > 0 ? normalizedTextureKey : null;
+}
+
+function selectSpriteTexturePath(stageSprite: StageSprite): string {
+  const textureKey = spriteTextureKeyFromName(stageSprite.name);
+  if (textureKey !== null) {
+    return `/assets/images/${textureKey}.png`;
+  }
+
+  return selectSpriteTexturePathByType(stageSprite.type);
 }
 
 function colorForSpriteType(type: string): number {
@@ -262,6 +162,33 @@ function colorForSpriteType(type: string): number {
       return 0x5ae08a;
     default:
       return 0x66ccff;
+  }
+}
+
+function colorForStageSprite(stageSprite: StageSprite): number {
+  return spriteTextureKeyFromName(stageSprite.name) !== null
+    ? 0xffffff
+    : colorForSpriteType(stageSprite.type);
+}
+
+async function preloadStageSpriteTextures(data: StageDataV1): Promise<void> {
+  const texturePaths = new Set<string>();
+
+  for (const stageSprite of data.sprites) {
+    texturePaths.add(selectSpriteTexturePath(stageSprite));
+  }
+
+  const results = await Promise.allSettled(
+    [...texturePaths].map(async (texturePath) => {
+      await Assets.load(texturePath);
+      return texturePath;
+    }),
+  );
+
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      console.warn('[Stage] Failed to preload sprite texture', result.reason);
+    }
   }
 }
 
@@ -420,9 +347,10 @@ function updateTriggerOverlaps(
       const hasEnteredThisFrame = !overlapState.activeTriggerIds.has(trigger.id);
       const hasAlreadyFired = overlapState.firedTriggerIds.has(trigger.id);
       const shouldFire = hasEnteredThisFrame && (!trigger.once || !hasAlreadyFired);
+      const normalizedEvent = trigger.event.trim().toLowerCase();
 
       if (shouldFire) {
-        if (trigger.event === 'speed') {
+        if (normalizedEvent === 'speed' || normalizedEvent === 'speed-change' || normalizedEvent === 'speedchange') {
           const speedParam = trigger.params?.speed;
           if (typeof speedParam === 'number' && Number.isFinite(speedParam)) {
             const durationMillisParam = trigger.params?.durationMillis;
@@ -479,19 +407,16 @@ function makeStageSpriteInstances(
   data: StageDataV1,
   config: ProjectionConfig,
 ): StageSpriteInstance[] {
-  const alphaCutoutFilter = createAlphaCutoutFilter(0.5);
-
   return data.sprites.map((stageSprite) => {
-    const texturePath = selectSpriteTexturePath(stageSprite.type);
+    const texturePath = selectSpriteTexturePath(stageSprite);
     const hasLoadedTexture = Assets.get(texturePath) !== undefined;
     const sprite = hasLoadedTexture
       ? Sprite.from(texturePath)
       : new Sprite(Texture.WHITE);
     sprite.texture.source.style.scaleMode = 'nearest';
     sprite.anchor.set(0.5, 1.0);
-    sprite.tint = colorForSpriteType(stageSprite.type);
+    sprite.tint = colorForStageSprite(stageSprite);
     sprite.alpha = 1.0;
-    sprite.filters = [alphaCutoutFilter];
     app.stage.addChild(sprite);
 
     const textureWidth = Math.max(1, sprite.texture.width);
@@ -514,7 +439,9 @@ function updateStageSprites(
   instances: StageSpriteInstance[],
   camera: CameraPoint,
   config: ProjectionConfig,
-): void {
+): number {
+  let visibleSpriteCount = 0;
+
   for (const instance of instances) {
     const projected = projectPoint(
       instance.worldX,
@@ -530,6 +457,7 @@ function updateStageSprites(
     }
 
     instance.sprite.visible = true;
+    visibleSpriteCount += 1;
     instance.sprite.x = projected.x;
     instance.sprite.y = projected.y;
     const spriteScale = config.focalX / projected.z;
@@ -537,6 +465,8 @@ function updateStageSprites(
     instance.sprite.height = Math.max(1, instance.worldHeight * spriteScale);
     instance.sprite.zIndex = -projected.z;
   }
+
+  return visibleSpriteCount;
 }
 
 function vec3Distance(a: StageWaypoint['position'], b: StageWaypoint['position']): number {
@@ -643,6 +573,7 @@ export async function loadStage(
 ): Promise<LoadedStage> {
   const rawStage = await Assets.load(stagePath);
   const data = parseStageData(rawStage);
+  await preloadStageSpriteTextures(data);
 
   const colliderGraphics = makeVolumeGraphics(0xffcc33);
   const triggerGraphics = makeVolumeGraphics(0xff6699);
@@ -674,6 +605,9 @@ export async function loadStage(
   return {
     data,
     update(dt: number) {
+      const frameStart = performance.now();
+
+      const cameraStart = performance.now();
       updateWaypointTravelSpeed(triggerRuntimeState, dt);
       waypointTravelDistance += triggerRuntimeState.waypointTravelSpeed * dt;
       const movingWaypoint = sampleWaypointPath(
@@ -686,11 +620,29 @@ export async function loadStage(
           yaw: computeCameraYaw(waypointPath, waypointTravelDistance, camera.yaw),
         };
       }
+      const cameraMs = performance.now() - cameraStart;
 
-      updateStageSprites(spriteInstances, camera, config);
+      const spritesStart = performance.now();
+      const visibleSpriteCount = updateStageSprites(spriteInstances, camera, config);
+      const spritesMs = performance.now() - spritesStart;
+
+      const collidersStart = performance.now();
       drawColliderVolumes(colliderGraphics, data.colliders, camera, config);
+      const collidersMs = performance.now() - collidersStart;
+
+      const triggersStart = performance.now();
       updateTriggerOverlaps(data.triggers, camera, triggerOverlapState, triggerRuntimeState);
       drawTriggerVolumes(triggerGraphics, data.triggers, camera, config, triggerOverlapState.activeTriggerIds);
+      const triggersMs = performance.now() - triggersStart;
+
+      return {
+        totalMs: performance.now() - frameStart,
+        cameraMs,
+        spritesMs,
+        visibleSpriteCount,
+        collidersMs,
+        triggersMs,
+      };
     },
   };
 }

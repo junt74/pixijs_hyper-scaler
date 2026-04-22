@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 import bpy
 import gpu
 from mathutils import Matrix, Vector
-from bpy.props import BoolProperty, FloatProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, StringProperty
 from bpy.types import Operator, Panel
 from bpy_extras.io_utils import ExportHelper
 from gpu_extras.batch import batch_for_shader
@@ -25,7 +25,7 @@ from gpu_extras.batch import batch_for_shader
 FORMAT_VERSION = 1
 RESERVED_TRIGGER_KEYS = {"event", "once", "name"}
 RESERVED_SPRITE_KEYS = {"variant", "route", "name"}
-MAX_ARRAY_EXPORT_COPIES = 4096
+MAX_ARRAY_EXPORT_COPIES = 65536
 SPRITE_ARRAY_PREVIEW_HANDLER = None
 
 
@@ -132,18 +132,19 @@ def get_bool_property(obj, key):
 
 def trigger_params(obj, errors):
     params_json = getattr(obj, "pixijs_hs_trigger_params_json", "")
+    params = {}
+
     if isinstance(params_json, str) and params_json.strip():
         try:
             parsed = json.loads(params_json)
         except json.JSONDecodeError as exc:
             errors.append(f'Trigger "{object_name_path(obj)}" has invalid Trigger Params JSON: {exc.msg}')
-            return {}
+            return params
 
         if not isinstance(parsed, dict):
             errors.append(f'Trigger "{object_name_path(obj)}" Trigger Params JSON must be an object')
-            return {}
+            return params
 
-        params = {}
         for key, value in parsed.items():
             if not isinstance(key, str):
                 errors.append(f'Trigger "{object_name_path(obj)}" has a non-string params key')
@@ -156,9 +157,16 @@ def trigger_params(obj, errors):
                 errors.append(
                     f'Trigger "{object_name_path(obj)}" param "{key}" must be string/number/boolean'
                 )
-        return params
+    else:
+        params = merged_custom_properties(obj, RESERVED_TRIGGER_KEYS)
 
-    return merged_custom_properties(obj, RESERVED_TRIGGER_KEYS)
+    if getattr(obj, "pixijs_hs_trigger_use_speed_param", False):
+        params["speed"] = float(getattr(obj, "pixijs_hs_trigger_speed", 0.0))
+
+    if getattr(obj, "pixijs_hs_trigger_use_duration_millis_param", False):
+        params["durationMillis"] = int(getattr(obj, "pixijs_hs_trigger_duration_millis", 0))
+
+    return params
 
 
 def object_name_path(obj):
@@ -199,9 +207,34 @@ def tag_redraw_view3d(_self=None, _context=None):
                 area.tag_redraw()
 
 
+def sync_trigger_event_preset(self, _context):
+    preset = getattr(self, "pixijs_hs_trigger_event_preset", "CUSTOM")
+    if preset != "CUSTOM":
+        self.pixijs_hs_trigger_event = preset
+
+
 def world_transform(obj):
     location, rotation, _scale = obj.matrix_world.decompose()
     return location, rotation.to_euler("XYZ")
+
+
+def is_trigger_empty_sphere(obj):
+    return obj.type == "EMPTY" and getattr(obj, "empty_display_type", "") == "SPHERE"
+
+
+def is_sprite_empty_cross(obj):
+    return obj.type == "EMPTY" and getattr(obj, "empty_display_type", "") == "PLAIN_AXES"
+
+
+def trigger_half_extents(obj):
+    _location, _rotation, scale = obj.matrix_world.decompose()
+    radius = max(0.0, float(getattr(obj, "empty_display_size", 0.0)))
+    scaled_radius = Vector((
+        radius * abs(float(scale.x)),
+        radius * abs(float(scale.y)),
+        radius * abs(float(scale.z)),
+    ))
+    return engine_vec3(scaled_radius)
 
 
 def local_bounding_box_size(obj):
@@ -373,6 +406,12 @@ def evaluated_array_sprite_transforms(obj, depsgraph, errors):
             evaluated_obj.to_mesh_clear()
 
 
+def sprite_array_axis_offset(index, count, step, centered):
+    if centered:
+        return (index - (count - 1) * 0.5) * step
+    return index * step
+
+
 def custom_sprite_array_transforms(obj):
     count_x = max(1, int(getattr(obj, "pixijs_hs_sprite_array_count_x", 1)))
     count_y = max(1, int(getattr(obj, "pixijs_hs_sprite_array_count_y", 1)))
@@ -382,6 +421,9 @@ def custom_sprite_array_transforms(obj):
         float(getattr(obj, "pixijs_hs_sprite_array_step_y", 0.0)),
         float(getattr(obj, "pixijs_hs_sprite_array_step_z", 0.0)),
     ))
+    center_x = bool(getattr(obj, "pixijs_hs_sprite_array_center_x", False))
+    center_y = bool(getattr(obj, "pixijs_hs_sprite_array_center_y", False))
+    center_z = bool(getattr(obj, "pixijs_hs_sprite_array_center_z", False))
     world_rotation = obj.matrix_world.decompose()[1].to_euler("XYZ")
 
     transforms = []
@@ -389,9 +431,9 @@ def custom_sprite_array_transforms(obj):
         for index_y in range(count_y):
             for index_z in range(count_z):
                 local_offset = Vector((
-                    local_step.x * index_x,
-                    local_step.y * index_y,
-                    local_step.z * index_z,
+                    sprite_array_axis_offset(index_x, count_x, local_step.x, center_x),
+                    sprite_array_axis_offset(index_y, count_y, local_step.y, center_y),
+                    sprite_array_axis_offset(index_z, count_z, local_step.z, center_z),
                 ))
                 world_location = obj.matrix_world @ local_offset
                 transforms.append((world_location, world_rotation))
@@ -596,6 +638,8 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
         float(getattr(obj, "pixijs_hs_curve_sprite_offset_y", 0.0)),
         float(getattr(obj, "pixijs_hs_curve_sprite_offset_z", 0.0)),
     ))
+    x_count = max(1, int(getattr(obj, "pixijs_hs_curve_sprite_x_count", 1)))
+    x_step = float(getattr(obj, "pixijs_hs_curve_sprite_x_step", 0.0))
 
     evaluated_obj = obj.evaluated_get(depsgraph)
     temp_mesh = None
@@ -620,13 +664,16 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
             )
 
             for sample_point in sampled_points:
-                world_point = evaluated_obj.matrix_world @ (sample_point + local_offset)
-                transforms.append((world_point, None))
-                if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
-                    errors.append(
-                        f'Curve sprite "{object_name_path(obj)}" expands beyond {MAX_ARRAY_EXPORT_COPIES} copies'
-                    )
-                    return []
+                for x_index in range(x_count):
+                    x_offset = (x_index - (x_count - 1) * 0.5) * x_step
+                    placement_offset = local_offset + Vector((x_offset, 0.0, 0.0))
+                    world_point = evaluated_obj.matrix_world @ (sample_point + placement_offset)
+                    transforms.append((world_point, None))
+                    if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
+                        errors.append(
+                            f'Curve sprite "{object_name_path(obj)}" expands beyond {MAX_ARRAY_EXPORT_COPIES} copies'
+                        )
+                        return []
 
         return transforms
     finally:
@@ -769,6 +816,12 @@ def export_sprites(scene, errors):
     for child_collection in sorted(root.children, key=lambda collection: collection.name):
         sprite_type = child_collection.name
         for obj in sorted(child_collection.objects, key=lambda item: item.name):
+            if obj.type != "CURVE" and not is_sprite_empty_cross(obj):
+                errors.append(
+                    f'Sprite "{object_name_path(obj)}" must be an Empty with display type "Plain Axes"'
+                )
+                continue
+
             params = merged_custom_properties(obj, RESERVED_SPRITE_KEYS)
             placements = []
             mode = "single"
@@ -857,15 +910,22 @@ def export_triggers(scene, errors):
 
     result = []
     for obj in sorted(collection.objects, key=lambda item: item.name):
+        if obj.type != "EMPTY":
+            errors.append(f'Trigger "{object_name_path(obj)}" must be an Empty with Sphere display')
+            continue
+        if not is_trigger_empty_sphere(obj):
+            errors.append(f'Trigger "{object_name_path(obj)}" must use Empty display type "Sphere"')
+            continue
+
         event_name = get_string_property(obj, "event")
         if event_name is None:
             errors.append(f'Trigger "{object_name_path(obj)}" is missing string custom property "event"')
             continue
 
         location, rotation = world_transform(obj)
-        half_extents = engine_vec3(obj.dimensions / 2.0)
+        half_extents = trigger_half_extents(obj)
         if half_extents["x"] <= 0 or half_extents["y"] <= 0 or half_extents["z"] <= 0:
-            errors.append(f'Trigger "{object_name_path(obj)}" has a non-positive size')
+            errors.append(f'Trigger "{object_name_path(obj)}" has a non-positive Empty Sphere radius')
             continue
 
         trigger = {
@@ -1002,10 +1062,35 @@ class VIEW3D_PT_pixijs_hyper_scaler_trigger(Panel):
         layout = self.layout
         obj = context.active_object
 
-        layout.prop(obj, "pixijs_hs_trigger_event", text="Event")
+        if obj.type != "EMPTY":
+            layout.label(text='Trigger export requires an Empty object', icon="ERROR")
+            return
+
+        layout.prop(obj, "empty_display_type", text="Display As")
+        layout.prop(obj, "empty_display_size", text="Radius")
+        if not is_trigger_empty_sphere(obj):
+            layout.label(text='Use "Sphere" so this object exports as a trigger', icon="ERROR")
+
+        layout.prop(obj, "pixijs_hs_trigger_event_preset", text="Event")
+        if obj.pixijs_hs_trigger_event_preset == "CUSTOM":
+            layout.prop(obj, "pixijs_hs_trigger_event", text="Event")
+        else:
+            layout.label(text=f'Event: {obj.pixijs_hs_trigger_event}')
         layout.prop(obj, "pixijs_hs_trigger_once", text="Once")
+        layout.separator()
+        layout.label(text="Typed Params")
+        layout.prop(obj, "pixijs_hs_trigger_use_speed_param", text="Use Speed")
+        speed_column = layout.column()
+        speed_column.enabled = obj.pixijs_hs_trigger_use_speed_param
+        speed_column.prop(obj, "pixijs_hs_trigger_speed", text="Speed")
+        layout.prop(obj, "pixijs_hs_trigger_use_duration_millis_param", text="Use Duration")
+        duration_column = layout.column()
+        duration_column.enabled = obj.pixijs_hs_trigger_use_duration_millis_param
+        duration_column.prop(obj, "pixijs_hs_trigger_duration_millis", text="Duration ms")
+        layout.separator()
         layout.prop(obj, "pixijs_hs_trigger_params_json", text="Params JSON")
-        layout.label(text="Writes object-side trigger fields")
+        layout.label(text="Typed params override duplicate keys in Params JSON")
+        layout.label(text="Trigger fields are written on the object")
 
 
 class VIEW3D_PT_pixijs_hyper_scaler_sprite_array(Panel):
@@ -1029,6 +1114,12 @@ class VIEW3D_PT_pixijs_hyper_scaler_sprite_array(Panel):
         layout.prop(obj, "pixijs_hs_sprite_array_enabled", text="Enabled")
         column = layout.column()
         column.enabled = obj.pixijs_hs_sprite_array_enabled
+        if obj.type != "EMPTY":
+            column.label(text='Sprite export requires an Empty object', icon="ERROR")
+            return
+        column.prop(obj, "empty_display_type", text="Display As")
+        if not is_sprite_empty_cross(obj):
+            column.label(text='Use "Plain Axes" as the sprite marker', icon="ERROR")
         column.label(text="Grid Count")
         column.prop(obj, "pixijs_hs_sprite_array_count_x", text="X")
         column.prop(obj, "pixijs_hs_sprite_array_count_y", text="Y")
@@ -1037,6 +1128,10 @@ class VIEW3D_PT_pixijs_hyper_scaler_sprite_array(Panel):
         column.prop(obj, "pixijs_hs_sprite_array_step_x", text="X")
         column.prop(obj, "pixijs_hs_sprite_array_step_y", text="Y")
         column.prop(obj, "pixijs_hs_sprite_array_step_z", text="Z")
+        column.label(text="Center On Base")
+        column.prop(obj, "pixijs_hs_sprite_array_center_x", text="X")
+        column.prop(obj, "pixijs_hs_sprite_array_center_y", text="Y")
+        column.prop(obj, "pixijs_hs_sprite_array_center_z", text="Z")
         column.label(text="Preview stays visible while unselected")
 
 
@@ -1066,10 +1161,14 @@ class VIEW3D_PT_pixijs_hyper_scaler_curve_sprite(Panel):
         column.prop(obj, "pixijs_hs_curve_sprite_spacing", text="Spacing")
         column.prop(obj, "pixijs_hs_curve_sprite_start_offset", text="Start Offset")
         column.prop(obj, "pixijs_hs_curve_sprite_end_inset", text="End Inset")
+        column.label(text="X Replication")
+        column.prop(obj, "pixijs_hs_curve_sprite_x_count", text="Count")
+        column.prop(obj, "pixijs_hs_curve_sprite_x_step", text="Step")
         column.label(text="Local Offset")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_x", text="X")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_y", text="Y")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_z", text="Z")
+        column.label(text="Replication stays centered around the curve")
         column.label(text="Yaw is exported as 0 for billboard sprites")
         column.label(text="Preview stays visible while unselected")
 
@@ -1141,10 +1240,42 @@ def register():
         description="Trigger event name exported as triggers[*].event",
         default="",
     )
+    bpy.types.Object.pixijs_hs_trigger_event_preset = EnumProperty(
+        name="Trigger Event",
+        description="Select a common trigger event or use a custom string",
+        items=(
+            ("CUSTOM", "Custom", "Use a custom event string"),
+            ("speed-change", "speed-change", "Speed change trigger handled by the runtime"),
+            ("checkpoint", "checkpoint", "Checkpoint trigger"),
+        ),
+        default="CUSTOM",
+        update=sync_trigger_event_preset,
+    )
     bpy.types.Object.pixijs_hs_trigger_once = BoolProperty(
         name="Trigger Once",
         description="When true, the trigger should fire only once",
         default=False,
+    )
+    bpy.types.Object.pixijs_hs_trigger_use_speed_param = BoolProperty(
+        name="Use Trigger Speed Param",
+        description='Export params.speed from the inspector',
+        default=False,
+    )
+    bpy.types.Object.pixijs_hs_trigger_speed = FloatProperty(
+        name="Trigger Speed",
+        description='Value exported as params.speed',
+        default=1.0,
+    )
+    bpy.types.Object.pixijs_hs_trigger_use_duration_millis_param = BoolProperty(
+        name="Use Trigger Duration Param",
+        description='Export params.durationMillis from the inspector',
+        default=False,
+    )
+    bpy.types.Object.pixijs_hs_trigger_duration_millis = IntProperty(
+        name="Trigger Duration Millis",
+        description='Value exported as params.durationMillis',
+        default=1000,
+        min=0,
     )
     bpy.types.Object.pixijs_hs_trigger_params_json = StringProperty(
         name="Trigger Params JSON",
@@ -1196,6 +1327,24 @@ def register():
         default=0.0,
         update=tag_redraw_view3d,
     )
+    bpy.types.Object.pixijs_hs_sprite_array_center_x = BoolProperty(
+        name="Sprite Array Center X",
+        description="Center X replicas around the base object's origin",
+        default=False,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_center_y = BoolProperty(
+        name="Sprite Array Center Y",
+        description="Center Y replicas around the base object's origin",
+        default=False,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_sprite_array_center_z = BoolProperty(
+        name="Sprite Array Center Z",
+        description="Center Z replicas around the base object's origin",
+        default=False,
+        update=tag_redraw_view3d,
+    )
     bpy.types.Object.pixijs_hs_curve_sprite_enabled = BoolProperty(
         name="Curve Sprite Enabled",
         description="Export this curve as evenly spaced sprite placements",
@@ -1221,6 +1370,19 @@ def register():
         description="Distance from the end of the curve where placement stops",
         default=0.0,
         min=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_x_count = IntProperty(
+        name="Curve Sprite X Count",
+        description="How many centered copies to place across the curve's local X axis at each sample",
+        default=1,
+        min=1,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_x_step = FloatProperty(
+        name="Curve Sprite X Step",
+        description="Distance between adjacent X replicas in the curve's local X axis",
+        default=0.0,
         update=tag_redraw_view3d,
     )
     bpy.types.Object.pixijs_hs_curve_sprite_offset_x = FloatProperty(
@@ -1286,10 +1448,15 @@ def unregister():
     del bpy.types.Object.pixijs_hs_sprite_array_step_z
     del bpy.types.Object.pixijs_hs_sprite_array_step_y
     del bpy.types.Object.pixijs_hs_sprite_array_step_x
+    del bpy.types.Object.pixijs_hs_sprite_array_center_z
+    del bpy.types.Object.pixijs_hs_sprite_array_center_y
+    del bpy.types.Object.pixijs_hs_sprite_array_center_x
     del bpy.types.Object.pixijs_hs_sprite_array_count_z
     del bpy.types.Object.pixijs_hs_sprite_array_count_y
     del bpy.types.Object.pixijs_hs_sprite_array_count_x
     del bpy.types.Object.pixijs_hs_sprite_array_enabled
+    del bpy.types.Object.pixijs_hs_curve_sprite_x_step
+    del bpy.types.Object.pixijs_hs_curve_sprite_x_count
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_z
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_y
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_x
@@ -1300,6 +1467,11 @@ def unregister():
     del bpy.types.Object.pixijs_hs_waypoint_curve_end_inset
     del bpy.types.Object.pixijs_hs_waypoint_curve_start_offset
     del bpy.types.Object.pixijs_hs_waypoint_curve_spacing
+    del bpy.types.Object.pixijs_hs_trigger_duration_millis
+    del bpy.types.Object.pixijs_hs_trigger_use_duration_millis_param
+    del bpy.types.Object.pixijs_hs_trigger_speed
+    del bpy.types.Object.pixijs_hs_trigger_use_speed_param
+    del bpy.types.Object.pixijs_hs_trigger_event_preset
     del bpy.types.Object.pixijs_hs_trigger_params_json
     del bpy.types.Object.pixijs_hs_trigger_once
     del bpy.types.Object.pixijs_hs_trigger_event
