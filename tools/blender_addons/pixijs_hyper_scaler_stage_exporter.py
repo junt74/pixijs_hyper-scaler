@@ -92,6 +92,12 @@ def sprite_params(obj):
     return params
 
 
+def merge_sprite_params(base_params, placement_params):
+    params = dict(base_params)
+    params.update(placement_params)
+    return params
+
+
 def get_string_property(obj, key):
     typed_attr = f"pixijs_hs_trigger_{key}"
     if hasattr(obj, typed_attr):
@@ -490,7 +496,8 @@ def draw_sprite_array_preview():
                 continue
 
             target_coords = active_coords if obj == active_object else inactive_coords
-            for position, _rotation in placements:
+            for placement in placements:
+                position = placement[0]
                 extend_crosshair_coords(target_coords, position, marker_size)
 
     gpu.state.blend_set("ALPHA")
@@ -588,6 +595,62 @@ def sample_polyline_point(points, distance):
     return points[-1].copy()
 
 
+def sample_polyline_tangent(points, distance, is_cyclic):
+    if len(points) < 2:
+        return None
+
+    total_length = polyline_total_length(points)
+    if total_length <= 1e-6:
+        return None
+
+    sample_offset = min(0.01, total_length * 0.01)
+    before_distance = max(0.0, distance - sample_offset)
+    after_distance = min(total_length, distance + sample_offset)
+
+    if is_cyclic:
+        before_distance = (distance - sample_offset) % total_length
+        after_distance = (distance + sample_offset) % total_length
+
+    before_point = sample_polyline_point(points, before_distance)
+    after_point = sample_polyline_point(points, after_distance)
+    if before_point is None or after_point is None:
+        return None
+
+    tangent = after_point - before_point
+    if tangent.length <= 1e-6:
+        return None
+
+    return tangent.normalized()
+
+
+def sample_polyline_distances(points, spacing, start_offset, end_inset, is_cyclic, include_end_point):
+    if len(points) < 2:
+        return []
+
+    total_length = polyline_total_length(points)
+    if total_length <= 1e-6:
+        return []
+
+    end_distance = total_length - end_inset
+    if end_distance < start_offset:
+        return []
+
+    sampled_distances = []
+    sample_distance = start_offset
+    while sample_distance <= end_distance + 1e-6:
+        if is_cyclic and sample_distance >= end_distance - 1e-6:
+            break
+
+        sampled_distances.append(sample_distance)
+        sample_distance += spacing
+
+    if include_end_point and not is_cyclic:
+        if not sampled_distances or abs(sampled_distances[-1] - end_distance) > 1e-6:
+            sampled_distances.append(end_distance)
+
+    return sampled_distances
+
+
 def polyline_total_length(points):
     total_length = 0.0
     for index in range(len(points) - 1):
@@ -644,8 +707,14 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
         float(getattr(obj, "pixijs_hs_curve_sprite_offset_y", 0.0)),
         float(getattr(obj, "pixijs_hs_curve_sprite_offset_z", 0.0)),
     ))
+    copy_mode = getattr(obj, "pixijs_hs_curve_sprite_copy_mode", "LINEAR_X")
     x_count = max(1, int(getattr(obj, "pixijs_hs_curve_sprite_x_count", 1)))
     x_step = float(getattr(obj, "pixijs_hs_curve_sprite_x_step", 0.0))
+    mirror_x = bool(getattr(obj, "pixijs_hs_curve_sprite_mirror_x", False))
+    radial_radius = float(getattr(obj, "pixijs_hs_curve_sprite_radial_radius", 0.0))
+    radial_count = max(1, int(getattr(obj, "pixijs_hs_curve_sprite_radial_count", 1)))
+    radial_start_angle = float(getattr(obj, "pixijs_hs_curve_sprite_radial_start_angle", 0.0))
+    radial_end_angle = float(getattr(obj, "pixijs_hs_curve_sprite_radial_end_angle", 360.0))
 
     evaluated_obj = obj.evaluated_get(depsgraph)
     temp_mesh = None
@@ -660,7 +729,7 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
 
         for component in components:
             points, is_cyclic = ordered_component_vertices(temp_mesh, adjacency, component)
-            sampled_points = sample_polyline_positions(
+            sampled_distances = sample_polyline_distances(
                 points,
                 spacing,
                 start_offset,
@@ -668,13 +737,68 @@ def sample_curve_sprite_transforms(obj, depsgraph, errors):
                 is_cyclic,
                 False,
             )
+            for sample_distance in sampled_distances:
+                sample_point = sample_polyline_point(points, sample_distance)
+                if sample_point is None:
+                    continue
+                placement_specs = []
 
-            for sample_point in sampled_points:
-                for x_index in range(x_count):
-                    x_offset = (x_index - (x_count - 1) * 0.5) * x_step
-                    placement_offset = local_offset + Vector((x_offset, 0.0, 0.0))
+                if copy_mode == "RADIAL":
+                    tangent = sample_polyline_tangent(points, sample_distance, is_cyclic)
+                    if tangent is None:
+                        tangent = Vector((0.0, 1.0, 0.0))
+
+                    bottom = Vector((0.0, 0.0, -1.0))
+                    if abs(tangent.dot(bottom)) > 0.999:
+                        bottom = Vector((0.0, -1.0, 0.0))
+                    bottom = bottom - tangent * bottom.dot(tangent)
+                    if bottom.length <= 1e-6:
+                        bottom = Vector((1.0, 0.0, 0.0))
+                        bottom = bottom - tangent * bottom.dot(tangent)
+                    bottom.normalize()
+                    right = bottom.cross(tangent)
+                    if right.length <= 1e-6:
+                        right = Vector((1.0, 0.0, 0.0))
+                    else:
+                        right.normalize()
+
+                    angle_span = radial_end_angle - radial_start_angle
+                    full_circle = abs(angle_span) > 1e-6 and abs(abs(angle_span) % 360.0) <= 1e-6
+                    if radial_count <= 1:
+                        angle_values = [radial_start_angle]
+                    elif full_circle:
+                        angle_step = angle_span / radial_count
+                        angle_values = [
+                            radial_start_angle + angle_step * radial_index
+                            for radial_index in range(radial_count)
+                        ]
+                    else:
+                        angle_step = angle_span / (radial_count - 1)
+                        angle_values = [
+                            radial_start_angle + angle_step * radial_index
+                            for radial_index in range(radial_count)
+                        ]
+                    for angle_deg in angle_values:
+                        angle_rad = math.radians(angle_deg)
+                        radial_direction = (bottom * math.cos(angle_rad)) + (right * math.sin(angle_rad))
+                        radial_offset = radial_direction * radial_radius
+                        placement_specs.append((
+                            local_offset + radial_offset,
+                            {"align": "CM", "roll": round(angle_deg, 6)},
+                        ))
+                else:
+                    for x_index in range(x_count):
+                        x_offset = (x_index - (x_count - 1) * 0.5) * x_step
+                        base_offset = local_offset + Vector((x_offset, 0.0, 0.0))
+                        placement_specs.append((base_offset, {}))
+                        if mirror_x:
+                            mirrored_offset = Vector((-base_offset.x, base_offset.y, base_offset.z))
+                            if (mirrored_offset - base_offset).length > 1e-6:
+                                placement_specs.append((mirrored_offset, {}))
+
+                for placement_offset, placement_params in placement_specs:
                     world_point = evaluated_obj.matrix_world @ (sample_point + placement_offset)
-                    transforms.append((world_point, None))
+                    transforms.append((world_point, None, placement_params))
                     if len(transforms) > MAX_ARRAY_EXPORT_COPIES:
                         errors.append(
                             f'Curve sprite "{object_name_path(obj)}" expands beyond {MAX_ARRAY_EXPORT_COPIES} copies'
@@ -882,7 +1006,10 @@ def export_sprites(scene, errors):
 
             needs_index_suffix = len(placements) > 1
 
-            for index, (location, rotation) in enumerate(placements):
+            for index, placement in enumerate(placements):
+                location = placement[0]
+                rotation = placement[1]
+                placement_params = placement[2] if len(placement) > 2 else {}
                 sprite_id = f"spr_{sanitize_id(sprite_type)}_{sanitize_id(obj.name)}"
                 sprite_name = obj.name
 
@@ -898,8 +1025,9 @@ def export_sprites(scene, errors):
                     "yaw": round(math.degrees(float(rotation.z)), 6) if rotation is not None else 0.0,
                 }
 
-                if params:
-                    sprite["params"] = params
+                merged_params = merge_sprite_params(params, placement_params)
+                if merged_params:
+                    sprite["params"] = merged_params
 
                 result.append(sprite)
 
@@ -1166,18 +1294,29 @@ class VIEW3D_PT_pixijs_hyper_scaler_curve_sprite(Panel):
         column = layout.column()
         column.enabled = obj.pixijs_hs_curve_sprite_enabled
         column.prop(obj, "pixijs_hs_sprite_align", text="Anchor")
+        column.prop(obj, "pixijs_hs_curve_sprite_copy_mode", text="Copy Mode")
         column.prop(obj, "pixijs_hs_curve_sprite_spacing", text="Spacing")
         column.prop(obj, "pixijs_hs_curve_sprite_start_offset", text="Start Offset")
         column.prop(obj, "pixijs_hs_curve_sprite_end_inset", text="End Inset")
-        column.label(text="X Replication")
-        column.prop(obj, "pixijs_hs_curve_sprite_x_count", text="Count")
-        column.prop(obj, "pixijs_hs_curve_sprite_x_step", text="Step")
+        if obj.pixijs_hs_curve_sprite_copy_mode == "RADIAL":
+            column.label(text="Radial Replication")
+            column.prop(obj, "pixijs_hs_curve_sprite_radial_radius", text="Radius")
+            column.prop(obj, "pixijs_hs_curve_sprite_radial_count", text="Count")
+            column.prop(obj, "pixijs_hs_curve_sprite_radial_start_angle", text="Start Angle")
+            column.prop(obj, "pixijs_hs_curve_sprite_radial_end_angle", text="End Angle")
+            column.label(text="0 deg starts from bottom, clockwise")
+            column.label(text="Full-circle spans avoid duplicating the end point")
+        else:
+            column.label(text="X Replication")
+            column.prop(obj, "pixijs_hs_curve_sprite_x_count", text="Count")
+            column.prop(obj, "pixijs_hs_curve_sprite_x_step", text="Step")
+            column.prop(obj, "pixijs_hs_curve_sprite_mirror_x", text="Mirror X")
         column.label(text="Local Offset")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_x", text="X")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_y", text="Y")
         column.prop(obj, "pixijs_hs_curve_sprite_offset_z", text="Z")
         column.label(text="Replication stays centered around the curve")
-        column.label(text="Yaw is exported as 0 for billboard sprites")
+        column.label(text="Roll is exported and kept as-is on screen")
         column.label(text="Preview stays visible while unselected")
 
 
@@ -1375,6 +1514,16 @@ def register():
         default=False,
         update=tag_redraw_view3d,
     )
+    bpy.types.Object.pixijs_hs_curve_sprite_copy_mode = EnumProperty(
+        name="Curve Sprite Copy Mode",
+        description="How each curve placement is replicated",
+        items=(
+            ("LINEAR_X", "Linear X", "Replicate along the curve's local X axis"),
+            ("RADIAL", "Radial", "Replicate around the placement point on a circle"),
+        ),
+        default="LINEAR_X",
+        update=tag_redraw_view3d,
+    )
     bpy.types.Object.pixijs_hs_curve_sprite_spacing = FloatProperty(
         name="Curve Sprite Spacing",
         description="Distance between generated sprite placements",
@@ -1407,6 +1556,38 @@ def register():
         name="Curve Sprite X Step",
         description="Distance between adjacent X replicas in the curve's local X axis",
         default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_mirror_x = BoolProperty(
+        name="Curve Sprite Mirror X",
+        description="Duplicate placements symmetrically across the curve's local YZ plane",
+        default=False,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_radial_radius = FloatProperty(
+        name="Curve Sprite Radial Radius",
+        description="Radius from the placement point when using radial replication",
+        default=1.0,
+        min=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_radial_count = IntProperty(
+        name="Curve Sprite Radial Count",
+        description="How many sprites to distribute around the circle",
+        default=8,
+        min=1,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_radial_start_angle = FloatProperty(
+        name="Curve Sprite Radial Start Angle",
+        description="Start angle in degrees; 0 starts from bottom and proceeds clockwise",
+        default=0.0,
+        update=tag_redraw_view3d,
+    )
+    bpy.types.Object.pixijs_hs_curve_sprite_radial_end_angle = FloatProperty(
+        name="Curve Sprite Radial End Angle",
+        description="End angle in degrees; full-circle spans avoid duplicating the end point",
+        default=360.0,
         update=tag_redraw_view3d,
     )
     bpy.types.Object.pixijs_hs_curve_sprite_offset_x = FloatProperty(
@@ -1481,12 +1662,18 @@ def unregister():
     del bpy.types.Object.pixijs_hs_sprite_array_enabled
     del bpy.types.Object.pixijs_hs_curve_sprite_x_step
     del bpy.types.Object.pixijs_hs_curve_sprite_x_count
+    del bpy.types.Object.pixijs_hs_curve_sprite_mirror_x
+    del bpy.types.Object.pixijs_hs_curve_sprite_radial_start_angle
+    del bpy.types.Object.pixijs_hs_curve_sprite_radial_end_angle
+    del bpy.types.Object.pixijs_hs_curve_sprite_radial_count
+    del bpy.types.Object.pixijs_hs_curve_sprite_radial_radius
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_z
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_y
     del bpy.types.Object.pixijs_hs_curve_sprite_offset_x
     del bpy.types.Object.pixijs_hs_curve_sprite_end_inset
     del bpy.types.Object.pixijs_hs_curve_sprite_start_offset
     del bpy.types.Object.pixijs_hs_curve_sprite_spacing
+    del bpy.types.Object.pixijs_hs_curve_sprite_copy_mode
     del bpy.types.Object.pixijs_hs_curve_sprite_enabled
     del bpy.types.Object.pixijs_hs_waypoint_curve_end_inset
     del bpy.types.Object.pixijs_hs_waypoint_curve_start_offset

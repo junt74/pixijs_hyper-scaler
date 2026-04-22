@@ -5,11 +5,12 @@ import { loadStage } from './stage';
 // ---- Screen ----------------------------------------------------------------
 const SCREEN_W = 960;
 const SCREEN_H = 540;
+const SCREEN_ASPECT = SCREEN_W / SCREEN_H;
 
 // ---- Projection (docs/specs/tech/Technical_Challenges_True3D_Doc1.md #12) --
 const FOV_H = 85;
-/** 縦方向も個別に指定（単一 FOCAL だと縦が画面比の関係で狭くなる） */
-const FOV_V = 85;
+/** 横方向FOVを基準に、縦方向は画面アスペクトから導出する */
+const FOV_V = (2 * Math.atan(Math.tan((FOV_H * Math.PI) / 360) / SCREEN_ASPECT) * 180) / Math.PI;
 const FOCAL_X = (SCREEN_W / 2) / Math.tan((FOV_H * Math.PI) / 180 / 2);
 const FOCAL_Y = (SCREEN_H / 2) / Math.tan((FOV_V * Math.PI) / 180 / 2);
 // ---- Stage / camera --------------------------------------------------------

@@ -39,6 +39,8 @@
 - 同一オブジェクト内の複数 `Array` modifier / 多重配列も扱える
 - `CURVE` は `Curve Sprite` 設定を有効にすると、等間隔に `sprites[]` へ展開される
 - `Curve Sprite` には中心基準の `X Replication` があり、1 本の Curve から床板の横並びを作れる
+- `Curve Sprite` には `Mirror X` があり、片側へ寄せた設定を反対側へ左右対称コピーできる
+- `Curve Sprite` には `Radial` 複製があり、円周上に並べてチューブやトンネル表現を作れる
 - 現在の従来 `Array` 手動展開の対応は `Fixed Count` のみ
 
 例:
@@ -64,8 +66,15 @@
 - `3D View > Sidebar > HyperScaler > Curve Sprite` を開く
 - `Enabled` をオンにする
 - `Anchor` で、各配置点に対してスプライトのどの位置を合わせるかを選ぶ
+- `Copy Mode` で `Linear X` か `Radial` を選ぶ
 - `Spacing` で配置間隔を決める
+- `Mirror X` をオンにすると、`Local Offset X` と `X Replication` を使った片側配置が反対側にも対称コピーされる
 - `X Replication` の `Count` と `Step` で、各サンプル点を Curve のローカル X 方向へ中心対称に複製できる
+- `Radial` では `Radius`、`Count`、`Start Angle`、`End Angle` を指定できる
+- 角度は 0 度で下から開始し、右回りに複製される
+- `Start Angle` と `End Angle` がちょうど 1 周ぶんなら、終端の重複配置は行わない
+- `Radial` では pivot は常に中心扱いになり、`Anchor` は `CM` で export される
+- `Radial` で生成される `roll` はそのまま screen-space の回転として使われる
 - 必要なら `Start Offset` / `End Inset` / `Local Offset` を設定する
 - billboard 前提のため `yaw` は `0` で export される
 

@@ -34,6 +34,7 @@ type StageSpriteInstance = {
   worldZ: number;
   worldWidth: number;
   worldHeight: number;
+  rollRadians: number;
   sprite: Sprite;
 };
 
@@ -199,6 +200,15 @@ function spriteAnchorFromAlignParam(stageSprite: StageSprite): { x: number; y: n
   }
 }
 
+function spriteRollRadiansFromParam(stageSprite: StageSprite): number {
+  const roll = stageSprite.params?.roll;
+  if (typeof roll !== 'number' || !Number.isFinite(roll)) {
+    return 0;
+  }
+
+  return (-roll * Math.PI) / 180;
+}
+
 async function preloadStageSpriteTextures(data: StageDataV1): Promise<void> {
   const texturePaths = new Set<string>();
 
@@ -341,36 +351,6 @@ function drawTriggerVolumes(
   }
 }
 
-function drawSpritePlacementPoints(
-  graphics: Graphics,
-  instances: StageSpriteInstance[],
-  camera: CameraPoint,
-  config: ProjectionConfig,
-): void {
-  graphics.clear();
-  graphics.setStrokeStyle({ width: 1.5, color: 0x66ffcc, alpha: 0.95 });
-
-  for (const instance of instances) {
-    const projected = projectPoint(
-      instance.worldX,
-      instance.worldY,
-      instance.worldZ,
-      camera,
-      config,
-    );
-    if (projected === null) {
-      continue;
-    }
-
-    const markerRadius = Math.max(3, Math.min(8, config.focalX / projected.z));
-    graphics.moveTo(projected.x - markerRadius, projected.y);
-    graphics.lineTo(projected.x + markerRadius, projected.y);
-    graphics.moveTo(projected.x, projected.y - markerRadius);
-    graphics.lineTo(projected.x, projected.y + markerRadius);
-    graphics.stroke();
-  }
-}
-
 function updateWaypointTravelSpeed(runtimeState: TriggerRuntimeState, dt: number): void {
   const transition = runtimeState.waypointTravelSpeedTransition;
   if (!transition.active) {
@@ -489,6 +469,7 @@ function makeStageSpriteInstances(
       worldZ: stageSprite.position.z,
       worldWidth: textureWidth / config.spritePixelsPerUnit,
       worldHeight: textureHeight / config.spritePixelsPerUnit,
+      rollRadians: spriteRollRadiansFromParam(stageSprite),
       sprite,
     };
   });
@@ -522,6 +503,7 @@ function updateStageSprites(
     const spriteScale = config.focalX / projected.z;
     instance.sprite.width = Math.max(1, instance.worldWidth * spriteScale);
     instance.sprite.height = Math.max(1, instance.worldHeight * spriteScale);
+    instance.sprite.rotation = instance.rollRadians;
     instance.sprite.zIndex = -projected.z;
   }
 
@@ -635,11 +617,9 @@ export async function loadStage(
   await preloadStageSpriteTextures(data);
 
   const colliderGraphics = makeVolumeGraphics(0xffcc33);
-  const spritePlacementGraphics = makeVolumeGraphics(0x66ffcc);
   const triggerGraphics = makeVolumeGraphics(0xff6699);
 
   app.stage.addChild(colliderGraphics);
-  app.stage.addChild(spritePlacementGraphics);
   app.stage.addChild(triggerGraphics);
 
   const spriteInstances = makeStageSpriteInstances(app, data, config);
@@ -685,7 +665,6 @@ export async function loadStage(
 
       const spritesStart = performance.now();
       const visibleSpriteCount = updateStageSprites(spriteInstances, camera, config);
-      drawSpritePlacementPoints(spritePlacementGraphics, spriteInstances, camera, config);
       const spritesMs = performance.now() - spritesStart;
 
       const collidersStart = performance.now();
