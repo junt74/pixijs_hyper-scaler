@@ -24,7 +24,7 @@ from gpu_extras.batch import batch_for_shader
 
 FORMAT_VERSION = 1
 RESERVED_TRIGGER_KEYS = {"event", "once", "name"}
-RESERVED_SPRITE_KEYS = {"variant", "route", "name"}
+RESERVED_SPRITE_KEYS = {"variant", "route", "name", "align"}
 MAX_ARRAY_EXPORT_COPIES = 65536
 SPRITE_ARRAY_PREVIEW_HANDLER = None
 
@@ -83,6 +83,12 @@ def custom_properties_from_id(data_block, reserved_keys):
 def merged_custom_properties(obj, reserved_keys):
     params = custom_properties_from_id(getattr(obj, "data", None), reserved_keys)
     params.update(custom_properties_from_id(obj, reserved_keys))
+    return params
+
+
+def sprite_params(obj):
+    params = merged_custom_properties(obj, RESERVED_SPRITE_KEYS)
+    params["align"] = getattr(obj, "pixijs_hs_sprite_align", "CB")
     return params
 
 
@@ -822,7 +828,7 @@ def export_sprites(scene, errors):
                 )
                 continue
 
-            params = merged_custom_properties(obj, RESERVED_SPRITE_KEYS)
+            params = sprite_params(obj)
             placements = []
             mode = "single"
             evaluated_parts = 0
@@ -1120,6 +1126,7 @@ class VIEW3D_PT_pixijs_hyper_scaler_sprite_array(Panel):
         column.prop(obj, "empty_display_type", text="Display As")
         if not is_sprite_empty_cross(obj):
             column.label(text='Use "Plain Axes" as the sprite marker', icon="ERROR")
+        column.prop(obj, "pixijs_hs_sprite_align", text="Anchor")
         column.label(text="Grid Count")
         column.prop(obj, "pixijs_hs_sprite_array_count_x", text="X")
         column.prop(obj, "pixijs_hs_sprite_array_count_y", text="Y")
@@ -1158,6 +1165,7 @@ class VIEW3D_PT_pixijs_hyper_scaler_curve_sprite(Panel):
         layout.prop(obj, "pixijs_hs_curve_sprite_enabled", text="Enabled")
         column = layout.column()
         column.enabled = obj.pixijs_hs_curve_sprite_enabled
+        column.prop(obj, "pixijs_hs_sprite_align", text="Anchor")
         column.prop(obj, "pixijs_hs_curve_sprite_spacing", text="Spacing")
         column.prop(obj, "pixijs_hs_curve_sprite_start_offset", text="Start Offset")
         column.prop(obj, "pixijs_hs_curve_sprite_end_inset", text="End Inset")
@@ -1281,6 +1289,22 @@ def register():
         name="Trigger Params JSON",
         description="Optional JSON object exported as triggers[*].params",
         default="",
+    )
+    bpy.types.Object.pixijs_hs_sprite_align = EnumProperty(
+        name="Sprite Anchor",
+        description="Which point on the sprite should match the placement position",
+        items=(
+            ("LT", "LT", "Left Top"),
+            ("CT", "CT", "Center Top"),
+            ("RT", "RT", "Right Top"),
+            ("LM", "LM", "Left Middle"),
+            ("CM", "CM", "Center Middle"),
+            ("RM", "RM", "Right Middle"),
+            ("LB", "LB", "Left Bottom"),
+            ("CB", "CB", "Center Bottom"),
+            ("RB", "RB", "Right Bottom"),
+        ),
+        default="CB",
     )
     bpy.types.Object.pixijs_hs_sprite_array_enabled = BoolProperty(
         name="Sprite Array Enabled",
@@ -1475,6 +1499,7 @@ def unregister():
     del bpy.types.Object.pixijs_hs_trigger_params_json
     del bpy.types.Object.pixijs_hs_trigger_once
     del bpy.types.Object.pixijs_hs_trigger_event
+    del bpy.types.Object.pixijs_hs_sprite_align
     del bpy.types.Scene.pixijs_hs_include_sprite_diagnostics
     del bpy.types.Scene.pixijs_hs_stage_name
     del bpy.types.Scene.pixijs_hs_stage_id

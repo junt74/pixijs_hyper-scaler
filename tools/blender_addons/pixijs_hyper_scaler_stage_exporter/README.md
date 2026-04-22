@@ -31,6 +31,7 @@
 - 各子 Collection には通常 sprite 用に `Empty` を置く
 - 通常 sprite の `Display As` は `Plain Axes` を使う
 - `CURVE` object も置ける
+- 通常 sprite / Curve Sprite ともに `Anchor` を `LT/CT/RT/LM/CM/RM/LB/CB/RB` から選べる
 - 追加の custom property は `params` に入る
 - 通常 sprite object には `Sprite Array` を設定できる
 - Blender 5 の新しい Geometry Nodes ベース `Array` を含む modifier 評価結果から、JSON 上で複製展開される
@@ -50,6 +51,7 @@
 - `Sprites/<type>/` 配下の通常 `Empty` object を選択
 - `3D View > Sidebar > HyperScaler > Sprite Array` を開く
 - `Enabled` をオンにする
+- `Anchor` で、配置点に対してスプライトのどの位置を合わせるかを選ぶ
 - `Grid Count X/Y/Z` と `Grid Step X/Y/Z` を設定する
 - 必要なら `Center On Base` の X/Y/Z を個別にオンにして、基準位置を中心に複製する
 - 配置は常に XYZ 軸に揃った直交格子として扱われる
@@ -61,6 +63,7 @@
 - `Sprites/<type>/` 配下の `CURVE` object を選択
 - `3D View > Sidebar > HyperScaler > Curve Sprite` を開く
 - `Enabled` をオンにする
+- `Anchor` で、各配置点に対してスプライトのどの位置を合わせるかを選ぶ
 - `Spacing` で配置間隔を決める
 - `X Replication` の `Count` と `Step` で、各サンプル点を Curve のローカル X 方向へ中心対称に複製できる
 - 必要なら `Start Offset` / `End Inset` / `Local Offset` を設定する

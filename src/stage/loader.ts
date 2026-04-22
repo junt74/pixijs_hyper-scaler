@@ -171,6 +171,34 @@ function colorForStageSprite(stageSprite: StageSprite): number {
     : colorForSpriteType(stageSprite.type);
 }
 
+function spriteAnchorFromAlignParam(stageSprite: StageSprite): { x: number; y: number } {
+  const align = typeof stageSprite.params?.align === 'string'
+    ? stageSprite.params.align.trim().toUpperCase()
+    : 'CB';
+
+  switch (align) {
+    case 'LT':
+      return { x: 0, y: 0 };
+    case 'CT':
+      return { x: 0.5, y: 0 };
+    case 'RT':
+      return { x: 1, y: 0 };
+    case 'LM':
+      return { x: 0, y: 0.5 };
+    case 'CM':
+      return { x: 0.5, y: 0.5 };
+    case 'RM':
+      return { x: 1, y: 0.5 };
+    case 'LB':
+      return { x: 0, y: 1 };
+    case 'RB':
+      return { x: 1, y: 1 };
+    case 'CB':
+    default:
+      return { x: 0.5, y: 1 };
+  }
+}
+
 async function preloadStageSpriteTextures(data: StageDataV1): Promise<void> {
   const texturePaths = new Set<string>();
 
@@ -313,6 +341,36 @@ function drawTriggerVolumes(
   }
 }
 
+function drawSpritePlacementPoints(
+  graphics: Graphics,
+  instances: StageSpriteInstance[],
+  camera: CameraPoint,
+  config: ProjectionConfig,
+): void {
+  graphics.clear();
+  graphics.setStrokeStyle({ width: 1.5, color: 0x66ffcc, alpha: 0.95 });
+
+  for (const instance of instances) {
+    const projected = projectPoint(
+      instance.worldX,
+      instance.worldY,
+      instance.worldZ,
+      camera,
+      config,
+    );
+    if (projected === null) {
+      continue;
+    }
+
+    const markerRadius = Math.max(3, Math.min(8, config.focalX / projected.z));
+    graphics.moveTo(projected.x - markerRadius, projected.y);
+    graphics.lineTo(projected.x + markerRadius, projected.y);
+    graphics.moveTo(projected.x, projected.y - markerRadius);
+    graphics.lineTo(projected.x, projected.y + markerRadius);
+    graphics.stroke();
+  }
+}
+
 function updateWaypointTravelSpeed(runtimeState: TriggerRuntimeState, dt: number): void {
   const transition = runtimeState.waypointTravelSpeedTransition;
   if (!transition.active) {
@@ -414,7 +472,8 @@ function makeStageSpriteInstances(
       ? Sprite.from(texturePath)
       : new Sprite(Texture.WHITE);
     sprite.texture.source.style.scaleMode = 'nearest';
-    sprite.anchor.set(0.5, 1.0);
+    const anchor = spriteAnchorFromAlignParam(stageSprite);
+    sprite.anchor.set(anchor.x, anchor.y);
     sprite.tint = colorForStageSprite(stageSprite);
     sprite.alpha = 1.0;
     app.stage.addChild(sprite);
@@ -576,9 +635,11 @@ export async function loadStage(
   await preloadStageSpriteTextures(data);
 
   const colliderGraphics = makeVolumeGraphics(0xffcc33);
+  const spritePlacementGraphics = makeVolumeGraphics(0x66ffcc);
   const triggerGraphics = makeVolumeGraphics(0xff6699);
 
   app.stage.addChild(colliderGraphics);
+  app.stage.addChild(spritePlacementGraphics);
   app.stage.addChild(triggerGraphics);
 
   const spriteInstances = makeStageSpriteInstances(app, data, config);
@@ -624,6 +685,7 @@ export async function loadStage(
 
       const spritesStart = performance.now();
       const visibleSpriteCount = updateStageSprites(spriteInstances, camera, config);
+      drawSpritePlacementPoints(spritePlacementGraphics, spriteInstances, camera, config);
       const spritesMs = performance.now() - spritesStart;
 
       const collidersStart = performance.now();
